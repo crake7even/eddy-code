@@ -15,10 +15,11 @@ index 8c0b7f5d36d4312f4c7c245a7e06d9ec87ac4f1a..6d7dd715fac4180b460ed93c6247b82b
 --- a/dist/tui.js
 +++ b/dist/tui.js
 @@ -905,7 +905,7 @@ export class TUI {
+             let buffer = "\x1b[?2026h"; // Begin synchronized output
              if (clear) {
                  buffer += this.deleteKittyImages(this.previousKittyImageIds);
 -                buffer += "\x1b[2J\x1b[H\x1b[3J"; // Clear screen, home, then clear scrollback
 +                buffer += "\x1b[2J\x1b[H"; // Clear viewport and home, preserving scrollback
              }
              for (let i = 0; i < newLines.length; i++) {
-                 if (i > 0) buffer += "\r\n";
+                 if (i > 0)
