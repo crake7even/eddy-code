@@ -1,0 +1,14 @@
+{
+  "changelog": ["@changesets/changelog-github", { "repo": "crake7even/eddy-code", "disableThanks": true }],
+  "commit": false,
+  "fixed": [],
+  "linked": [],
+  "access": "public",
+  "baseBranch": "main",
+  "updateInternalDependencies": "patch",
+  "ignore": [],
+  "snapshot": {
+    "useCalculatedVersion": true,
+    "prereleaseTemplate": "{tag}-{commit}"
+  }
+}

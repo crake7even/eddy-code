@@ -1,0 +1,90 @@
+
+import { describe, it, expect } from 'vitest';
+
+import { createTUIState, type EddyTUIOptions } from '#/tui/eddy-tui';
+import type { AppState } from '#/tui/types';
+
+function fakeInitialAppState(): AppState {
+  return {
+    model: 'test-model',
+    workDir: '/tmp/eddy-test',
+    sessionId: 'sess-1',
+    permissionMode: 'manual',
+    planMode: false,
+    thinking: false,
+    contextUsage: 0,
+    contextTokens: 0,
+    maxContextTokens: 0,
+    isCompacting: false,
+    isReplaying: false,
+    streamingPhase: 'idle',
+    streamingStartTime: 0,
+    livePaneMode: 'idle',
+    theme: 'dark',
+    version: '0.0.0-test',
+    hasNewVersion: false,
+    latestVersion: null,
+    editorCommand: null,
+    notifications: { enabled: true, condition: 'unfocused' },
+    availableModels: {},
+    availableProviders: {},
+    sessionTitle: null,
+    goal: null,
+    goalActive: false,
+    goalContinuationCount: 0,
+    ccConnectActive: false,
+    wolfpackMode: false,
+    recentSessions: [],
+  };
+}
+
+describe('createTUIState', () => {
+  it('initializes all fields with sensible defaults', () => {
+    const opts: EddyTUIOptions = {
+      initialAppState: fakeInitialAppState(),
+      startup: {
+        continueLast: false,
+        yolo: false,
+        auto: false,
+        plan: false,
+      },
+    };
+    const state = createTUIState(opts);
+
+    // UI objects are created.
+    expect(state.ui).toBeDefined();
+    expect(state.terminal).toBeDefined();
+    expect(state.transcriptContainer).toBeDefined();
+    expect(state.activityContainer).toBeDefined();
+    expect(state.todoPanelContainer).toBeDefined();
+    expect(state.queueContainer).toBeDefined();
+    expect(state.editorContainer).toBeDefined();
+    expect(state.editor).toBeDefined();
+    expect(state.footer).toBeDefined();
+    expect(state.todoPanel).toBeDefined();
+    expect(state.theme.colors).toBeDefined();
+    expect(state.theme.markdownTheme).toBeDefined();
+
+    // App state is cloned from initialAppState, not reused by reference.
+    expect(state.appState).not.toBe(opts.initialAppState);
+    expect(state.appState.model).toBe('test-model');
+    expect(state.appState.sessionId).toBe('sess-1');
+    expect(state.startupState).toBe('pending');
+
+    // LivePane defaults.
+    expect(state.livePane.mode).toBe('idle');
+    expect(state.livePane.pendingApproval).toBeNull();
+    expect(state.livePane.pendingQuestion).toBeNull();
+
+    // Empty collections.
+    expect(state.transcriptEntries).toHaveLength(0);
+    expect(state.queuedMessages).toHaveLength(0);
+
+    // Boolean, counter, and optional-field defaults.
+    expect(state.toolOutputExpanded).toBe(false);
+    expect(state.activeDialog).toBeNull();
+    expect(state.externalEditorRunning).toBe(false);
+    expect(state.loadingSessions).toBe(false);
+    expect(state.activitySpinner).toBeNull();
+  });
+});

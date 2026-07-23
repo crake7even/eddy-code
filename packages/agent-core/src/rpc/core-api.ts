@@ -1,0 +1,411 @@
+﻿import type { AgentConfigData } from '#/agent/config';
+import type { AgentContextData } from '#/agent/context';
+import type { PermissionData, PermissionMode } from '#/agent/permission';
+import type { PlanData } from '#/agent/plan';
+import type { ToolInfo } from '#/agent/tool';
+import type { EddyConfig, EddyConfigPatch } from '#/config';
+import type { McpServerConfig } from '#/config/schema';
+import type { ExperimentalFlagMap } from '#/flags';
+import type { ResumeSessionResult } from '#/rpc/resumed';
+import type { SessionMeta } from '#/session';
+import type { BackgroundTaskInfo } from '#/tools/builtin';
+import type { ContentPart } from '@eddy-code/ltod';
+
+import type { PluginInfo, PluginSummary, ReloadSummary } from '#/plugin';
+import type { UsageStatus } from './events';
+import type { WithAgentId, WithSessionId } from './types';
+
+export type JsonPrimitive = string | number | boolean | null;
+export type JsonValue = JsonPrimitive | JsonValue[] | { readonly [key: string]: JsonValue };
+export type JsonObject = { readonly [key: string]: JsonValue };
+
+export type Unsubscribe = () => void;
+
+export type { EddyConfig, EddyConfigPatch };
+
+export type TextPromptPart = Extract<ContentPart, { type: 'text' }>;
+export type PromptPart = Extract<ContentPart, { type: 'text' | 'image_url' | 'video_url' }>;
+
+export type PromptInput = readonly PromptPart[];
+
+export type EmptyPayload = {};
+export type SessionMetadataPatch = Partial<Omit<SessionMeta, 'agents'>>;
+
+export interface CreateSessionPayload {
+  readonly id?: string | undefined;
+  readonly workDir: string;
+  readonly model?: string | undefined;
+  readonly thinking?: string | undefined;
+  readonly permission?: PermissionMode | undefined;
+  readonly metadata?: JsonObject | undefined;
+}
+
+export interface CloseSessionPayload {
+  readonly sessionId: string;
+}
+
+export interface DeleteSessionPayload {
+  readonly sessionId: string;
+}
+
+export interface ResumeSessionPayload {
+  readonly sessionId: string;
+}
+
+export interface ForkSessionPayload {
+  readonly sessionId: string;
+  readonly id?: string;
+  readonly title?: string;
+  readonly metadata?: JsonObject;
+}
+
+export interface ShellEnvironment {
+  readonly term?: string | undefined;
+  readonly termProgram?: string | undefined;
+  readonly termProgramVersion?: string | undefined;
+  readonly multiplexer?: string | undefined;
+  readonly shell?: string | undefined;
+}
+
+export interface ExportSessionPayload {
+  readonly sessionId: string;
+  readonly outputPath?: string | undefined;
+  /**
+   * When true, the active global diagnostic log (`$EDDY_CODE_HOME/logs/eddy-code.log`)
+   * is copied into the zip at `logs/global/eddy-code.log`. Off by default to
+   * avoid bundling events from concurrent sessions / other projects.
+   */
+  readonly includeGlobalLog?: boolean | undefined;
+  /** Host version to record in the export manifest. */
+  readonly version: string;
+  /** How the CLI was installed (e.g. 'npm-global', 'native'). */
+  readonly installSource?: string | undefined;
+  readonly shellEnv?: ShellEnvironment | undefined;
+}
+
+export interface ExportSessionManifest {
+  readonly sessionId: string;
+  readonly exportedAt: string;
+  readonly eddyCodeVersion: string;
+  readonly wireProtocolVersion: string;
+  readonly os: string;
+  readonly nodejsVersion: string;
+  readonly sessionFirstActivity?: string | undefined;
+  readonly sessionLastActivity?: string | undefined;
+  readonly title?: string | undefined;
+  readonly workspaceDir?: string | undefined;
+  /** zip-relative path to the session diagnostic log when present. */
+  readonly sessionLogPath?: string | undefined;
+  /** zip-relative path to the bundled global diagnostic log (only when --include-global-log). */
+  readonly globalLogPath?: string | undefined;
+  /** How the CLI was installed (e.g. 'npm-global', 'native'). */
+  readonly installSource?: string | undefined;
+  readonly shellEnv?: ShellEnvironment | undefined;
+}
+
+export interface ExportSessionResult {
+  readonly zipPath: string;
+  readonly entries: readonly string[];
+  readonly sessionDir: string;
+  readonly manifest: ExportSessionManifest;
+}
+
+export interface ListSessionsPayload {
+  readonly workDir?: string;
+  readonly sessionId?: string;
+}
+
+export interface CoreInfo {
+  readonly version: string;
+}
+
+export interface SessionSummary {
+  readonly id: string;
+  readonly title?: string | undefined;
+  readonly lastPrompt?: string;
+  readonly workDir: string;
+  readonly sessionDir: string;
+  readonly createdAt: number;
+  readonly updatedAt: number;
+  readonly archived?: boolean | undefined;
+  readonly metadata?: JsonObject | undefined;
+}
+
+export interface PromptPayload {
+  readonly input: readonly ContentPart[];
+}
+export interface SteerPayload {
+  readonly input: readonly ContentPart[];
+}
+export interface CancelPayload {
+  readonly turnId?: number;
+}
+export interface SetThinkingPayload {
+  readonly level: string;
+}
+export interface SetPermissionPayload {
+  readonly mode: PermissionMode;
+}
+export interface SetModelPayload {
+  readonly model: string;
+}
+export interface SetModelResult {
+  readonly model: string;
+  readonly providerName?: string | undefined;
+}
+export interface CancelPlanPayload {
+  readonly id?: string;
+}
+export interface BeginCompactionPayload {
+  readonly instruction?: string;
+}
+export interface RegisterToolPayload {
+  readonly name: string;
+  readonly description: string;
+  readonly parameters: Record<string, unknown>;
+}
+export interface UnregisterToolPayload {
+  readonly name: string;
+}
+export interface SetActiveToolsPayload {
+  readonly names: readonly string[];
+}
+export interface StopBackgroundPayload {
+  readonly taskId: string;
+  /** Free-form human-readable reason persisted with the task record. */
+  readonly reason?: string;
+}
+export interface GetBackgroundOutputPayload {
+  readonly taskId: string;
+  readonly tail?: number;
+}
+export interface GetBackgroundOutputPathPayload {
+  readonly taskId: string;
+}
+export interface GetBackgroundPayload {
+  /**
+   * When omitted, returns all tasks (including terminal/lost). Pass
+   * `true` to filter down to active-only 鈥?useful for model-facing
+   * surfaces. UI/TUI consumers should leave it undefined.
+   */
+  readonly activeOnly?: boolean;
+  /** Caps the number of tasks returned. When omitted, returns all matching tasks. */
+  readonly limit?: number;
+}
+export interface SkillSummary {
+  readonly name: string;
+  readonly description: string;
+  readonly path: string;
+  readonly source: 'builtin' | 'user' | 'extra' | 'project';
+  readonly type?: string | undefined;
+  readonly disableModelInvocation?: boolean | undefined;
+}
+
+export interface ActivateSkillPayload {
+  readonly name: string;
+  readonly args?: string | undefined;
+}
+
+export interface McpServerInfo {
+  readonly name: string;
+  readonly transport: 'stdio' | 'http';
+  readonly status: 'pending' | 'connected' | 'failed' | 'disabled' | 'needs-auth';
+  readonly toolCount: number;
+  readonly error?: string;
+}
+
+export interface McpStartupMetrics {
+  readonly durationMs: number;
+}
+
+export interface ReconnectMcpServerPayload {
+  readonly name: string;
+}
+
+export interface AddMcpServerPayload {
+  readonly name: string;
+  readonly config: McpServerConfig;
+}
+
+export interface StopMcpServerPayload {
+  readonly name: string;
+}
+
+export interface RemoveMcpServerPayload {
+  readonly name: string;
+}
+
+export interface InstallPluginPayload {
+  readonly source: string;
+}
+
+export interface SetPluginEnabledPayload {
+  readonly id: string;
+  readonly enabled: boolean;
+}
+
+export interface SetPluginMcpServerEnabledPayload {
+  readonly id: string;
+  readonly server: string;
+  readonly enabled: boolean;
+}
+
+export interface RemovePluginPayload {
+  readonly id: string;
+}
+
+export interface GetPluginInfoPayload {
+  readonly id: string;
+}
+
+export type ReloadPluginsResult = ReloadSummary;
+export type { PluginSummary, PluginInfo };
+
+export interface RenameSessionPayload {
+  readonly title: string;
+}
+
+export interface UpdateSessionMetadataPayload {
+  readonly metadata: SessionMetadataPatch;
+}
+
+export interface GetEddyConfigPayload {
+  readonly reload?: boolean;
+}
+
+export type SetEddyConfigPayload = EddyConfigPatch;
+
+export interface RemoveEddyProviderPayload {
+  readonly providerId: string;
+}
+export interface UndoHistoryPayload {
+  readonly count: number;
+}
+
+export interface SideQuestionPayload {
+  readonly question: string;
+}
+
+export interface SideQuestionResult {
+  readonly answer: string;
+}
+
+export interface CreateGoalPayload {
+  readonly objective: string;
+  readonly completionCriterion?: string;
+  readonly replace?: boolean;
+}
+
+export interface UpdateGoalStatusPayload {
+  readonly status: 'active' | 'complete' | 'paused' | 'blocked';
+}
+
+export interface SetGoalBudgetPayload {
+  readonly value: number;
+  readonly unit: 'turns' | 'tokens' | 'milliseconds' | 'seconds' | 'minutes' | 'hours';
+}
+
+export interface GoalSnapshotData {
+  readonly goalId: string;
+  readonly objective: string;
+  readonly completionCriterion?: string;
+  readonly status: string;
+  readonly turnsUsed: number;
+  readonly tokensUsed: number;
+  readonly wallClockMs: number;
+  readonly budget: {
+    readonly tokenBudget: number | null;
+    readonly turnBudget: number | null;
+    readonly wallClockBudgetMs: number | null;
+    readonly remainingTokens: number | null;
+    readonly remainingTurns: number | null;
+    readonly remainingWallClockMs: number | null;
+    readonly overBudget: boolean;
+  };
+  readonly terminalReason?: string;
+  readonly notes: readonly { readonly content: string; readonly time: number }[];
+}
+
+export interface GetGoalResult {
+  readonly goal: GoalSnapshotData | null;
+}
+
+export interface AgentAPI {
+  prompt: (payload: PromptPayload) => void;
+  steer: (payload: SteerPayload) => void;
+  cancel: (payload: CancelPayload) => void;
+  setThinking: (payload: SetThinkingPayload) => void;
+  setPermission: (payload: SetPermissionPayload) => void;
+  setModel: (payload: SetModelPayload) => SetModelResult;
+  getModel: (payload: EmptyPayload) => string;
+  enterPlan: (payload: EmptyPayload) => void;
+  cancelPlan: (payload: CancelPlanPayload) => void;
+  clearPlan: (payload: EmptyPayload) => void;
+  enterWolfpack: (payload: EmptyPayload) => void;
+  exitWolfpack: (payload: EmptyPayload) => void;
+  beginCompaction: (payload: BeginCompactionPayload) => void;
+  cancelCompaction: (payload: EmptyPayload) => void;
+  registerTool: (payload: RegisterToolPayload) => void;
+  unregisterTool: (payload: UnregisterToolPayload) => void;
+  setActiveTools: (payload: SetActiveToolsPayload) => void;
+  stopBackground: (payload: StopBackgroundPayload) => void;
+  clearContext: (payload: EmptyPayload) => void;
+  undoHistory: (payload: UndoHistoryPayload) => void;
+  activateSkill: (payload: ActivateSkillPayload) => void;
+  getBackgroundOutput: (payload: GetBackgroundOutputPayload) => string;
+  getBackgroundOutputPath: (payload: GetBackgroundOutputPathPayload) => string | undefined;
+  getContext: (payload: EmptyPayload) => AgentContextData;
+  getConfig: (payload: EmptyPayload) => AgentConfigData;
+  getPermission: (payload: EmptyPayload) => PermissionData;
+  getPlan: (payload: EmptyPayload) => PlanData;
+  getUsage: (payload: EmptyPayload) => UsageStatus;
+  getTools: (payload: EmptyPayload) => readonly ToolInfo[];
+  getBackground: (payload: GetBackgroundPayload) => readonly BackgroundTaskInfo[];
+  extractMemoriesOnExit: (payload: EmptyPayload) => Promise<void>;
+  sideQuestion: (payload: SideQuestionPayload) => Promise<SideQuestionResult>;
+  createGoal: (payload: CreateGoalPayload) => GoalSnapshotData;
+  updateGoalStatus: (payload: UpdateGoalStatusPayload) => GoalSnapshotData | null;
+  cancelGoal: (payload: EmptyPayload) => GoalSnapshotData | null;
+  getGoal: (payload: EmptyPayload) => GetGoalResult;
+  setGoalBudget: (payload: SetGoalBudgetPayload) => GoalSnapshotData;
+}
+
+type AgentAPIWithId = WithAgentId<AgentAPI>;
+
+export interface SessionAPI extends AgentAPIWithId {
+  renameSession: (payload: RenameSessionPayload) => void;
+  updateSessionMetadata: (payload: UpdateSessionMetadataPayload) => void;
+  getSessionMetadata: (payload: EmptyPayload) => SessionMeta;
+  listSkills: (payload: EmptyPayload) => readonly SkillSummary[];
+  listMcpServers: (payload: EmptyPayload) => readonly McpServerInfo[];
+  getMcpStartupMetrics: (payload: EmptyPayload) => McpStartupMetrics;
+  reconnectMcpServer: (payload: ReconnectMcpServerPayload) => void;
+  addMcpServer: (payload: AddMcpServerPayload) => void;
+  stopMcpServer: (payload: StopMcpServerPayload) => void;
+  removeMcpServer: (payload: RemoveMcpServerPayload) => void;
+  generateAgentsMd: (payload: EmptyPayload) => void;
+}
+
+type SessionAPIWithId = WithSessionId<SessionAPI>;
+
+export interface CoreAPI extends SessionAPIWithId {
+  getCoreInfo: (payload: EmptyPayload) => CoreInfo;
+  getExperimentalFlags: (payload: EmptyPayload) => ExperimentalFlagMap;
+  getEddyConfig: (payload: GetEddyConfigPayload) => EddyConfig;
+  setEddyConfig: (payload: SetEddyConfigPayload) => EddyConfig;
+  removeEddyProvider: (payload: RemoveEddyProviderPayload) => EddyConfig;
+  createSession: (payload: CreateSessionPayload) => SessionSummary;
+  closeSession: (payload: CloseSessionPayload) => void;
+  deleteSession: (payload: DeleteSessionPayload) => void;
+  resumeSession: (payload: ResumeSessionPayload) => ResumeSessionResult;
+  forkSession: (payload: ForkSessionPayload) => ResumeSessionResult;
+  listSessions: (payload: ListSessionsPayload) => readonly SessionSummary[];
+  exportSession: (payload: ExportSessionPayload) => ExportSessionResult;
+  listPlugins: (payload: EmptyPayload) => readonly PluginSummary[];
+  installPlugin: (payload: InstallPluginPayload) => PluginSummary;
+  setPluginEnabled: (payload: SetPluginEnabledPayload) => void;
+  setPluginMcpServerEnabled: (payload: SetPluginMcpServerEnabledPayload) => void;
+  removePlugin: (payload: RemovePluginPayload) => void;
+  reloadPlugins: (payload: EmptyPayload) => ReloadPluginsResult;
+  getPluginInfo: (payload: GetPluginInfoPayload) => PluginInfo;
+}

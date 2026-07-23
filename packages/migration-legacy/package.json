@@ -1,0 +1,34 @@
+{
+  "name": "@eddy-code/migration-legacy",
+  "version": "0.6.3",
+  "description": "Migrate eddy-code (~/.eddy-code/) data into eddy-code (~/.eddy-code/).",
+  "license": "MIT",
+  "type": "module",
+  "private": true,
+  "imports": {
+    "#/*": [
+      "./src/*.ts",
+      "./src/*/index.ts"
+    ]
+  },
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "default": "./src/index.ts"
+    }
+  },
+  "scripts": {
+    "build": "tsdown",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "clean": "rm -rf dist"
+  },
+  "dependencies": {
+    "@eddy-code/agent-core": "workspace:^",
+    "smol-toml": "^1.6.1",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@eddy-code/jian": "workspace:^"
+  }
+}

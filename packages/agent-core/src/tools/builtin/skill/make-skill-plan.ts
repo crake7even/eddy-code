@@ -1,0 +1,246 @@
+import { z } from 'zod';
+
+import type { Agent } from '#/agent';
+import type { ContextMessage } from '#/agent/context/types';
+import { ErrorCodes, EddyError } from '#/errors';
+import { parseSkillText } from '#/skill/parser';
+import type { BuiltinTool } from '../../../agent/tool';
+import type { ExecutableToolContext, ExecutableToolResult, ToolExecution } from '../../../loop/types';
+import { toInputJsonSchema } from '../../support/input-schema';
+import {
+  sanitizeSkillName,
+  SKILL_TYPE_SCHEMA,
+} from './skill-package-writer';
+import CODE_PATTERN_TEMPLATE from './templates/code-pattern.md';
+import CUSTOM_TEMPLATE from './templates/custom.md';
+import TOOL_CHAIN_TEMPLATE from './templates/tool-chain.md';
+import TROUBLESHOOTING_TEMPLATE from './templates/troubleshooting.md';
+import WORKFLOW_TEMPLATE from './templates/workflow.md';
+
+const MakeSkillPlanInputSchema = z.object({
+  type: SKILL_TYPE_SCHEMA.describe(
+    'The kind of skill to craft: workflow, code-pattern, troubleshooting, tool-chain, or custom.',
+  ),
+  nameHint: z.string().default('').describe('Optional kebab-case name suggested by the user.'),
+  purpose: z.string().default('').describe('One-sentence description of what problem this skill solves.'),
+  focus: z.string().default('').describe('User-provided focus: which parts of the conversation to extract or emphasize.'),
+});
+
+export type MakeSkillPlanInput = z.infer<typeof MakeSkillPlanInputSchema>;
+
+interface SkillPlan {
+  readonly name: string;
+  readonly description: string;
+  readonly content: string;
+  readonly files: readonly { readonly path: string; readonly content: string }[];
+}
+
+const TEMPLATES: Record<MakeSkillPlanInput['type'], string> = {
+  workflow: WORKFLOW_TEMPLATE,
+  'code-pattern': CODE_PATTERN_TEMPLATE,
+  troubleshooting: TROUBLESHOOTING_TEMPLATE,
+  'tool-chain': TOOL_CHAIN_TEMPLATE,
+  custom: CUSTOM_TEMPLATE,
+};
+
+const SYSTEM_PROMPT = `You are a skill author.
+
+Analyze the conversation transcript and the user's explicit guidance, then produce a reusable Skill package as JSON.
+
+The package must contain:
+- name: kebab-case skill name. Prefer the user's nameHint if it is valid kebab-case; otherwise derive a concise name from the purpose.
+- description: one sentence describing when to use this skill.
+- content: the complete Markdown body of SKILL.md, including YAML frontmatter. The frontmatter must at least contain **name** and **description**. Keep it concrete, reusable, and focused on the user's stated purpose and focus.
+- files: optional supporting files (e.g. scripts, data files) relative to the skill directory. Empty array if none.
+
+Rules:
+- The skill must be reusable across similar projects, not hard-coded to the current session.
+- Mention tools by name (Read, Bash, Agent, etc.) when giving step-by-step instructions.
+- Use placeholders like <entry-file> instead of project-specific paths when possible.
+- Do not invent file content the user did not provide.
+- Output ONLY a single fenced JSON block. No extra prose.`;
+
+const MAX_HISTORY_MESSAGES = 40;
+const MAX_TEXT_LENGTH = 800;
+const MAX_TRANSCRIPT_LENGTH = 12000;
+
+export class MakeSkillPlanTool implements BuiltinTool<MakeSkillPlanInput> {
+  readonly name = 'MakeSkillPlan' as const;
+  readonly description =
+    'Analyze the current conversation context and produce a reusable Skill package ' +
+    '(SKILL.md plus optional supporting files). Only call this when the user has invoked /make-skill.';
+  readonly parameters: Record<string, unknown> = toInputJsonSchema(MakeSkillPlanInputSchema);
+
+  constructor(private readonly agent: Agent) {}
+
+  resolveExecution(args: MakeSkillPlanInput): ToolExecution {
+    return {
+      description: `Crafting skill plan (${args.type})`,
+      approvalRule: this.name,
+      execute: (context) => this.execute(args, context),
+    };
+  }
+
+  private async execute(
+    args: MakeSkillPlanInput,
+    _context: ExecutableToolContext,
+  ): Promise<ExecutableToolResult> {
+    try {
+      const plan = await this.generatePlan(args);
+      return { output: JSON.stringify(plan, null, 2) };
+    } catch (error) {
+      if (error instanceof EddyError) {
+        return { isError: true, output: error.message };
+      }
+      return {
+        isError: true,
+        output: `Failed to craft skill plan: ${error instanceof Error ? error.message : String(error)}`,
+      };
+    }
+  }
+
+  private async generatePlan(args: MakeSkillPlanInput): Promise<SkillPlan> {
+    const transcript = buildTranscript(this.agent.context.history);
+    const userPrompt = buildUserPrompt(args, transcript);
+
+    const response = await this.agent.generate(
+      this.agent.config.provider,
+      SYSTEM_PROMPT,
+      [],
+      [
+        {
+          role: 'user',
+          content: [{ type: 'text', text: userPrompt }],
+          toolCalls: [],
+        },
+      ],
+    );
+
+    const rawText =
+      typeof response.message.content === 'string'
+        ? response.message.content
+        : response.message.content.map((part) => (part.type === 'text' ? part.text : '')).join('');
+
+    const plan = parsePlanJson(rawText);
+    validateSkillPlan(plan, args.nameHint);
+    return plan;
+  }
+}
+
+function buildUserPrompt(args: MakeSkillPlanInput, transcript: string): string {
+  const template = TEMPLATES[args.type];
+  const nameHintLine =
+    args.nameHint.trim().length > 0
+      ? `Suggested name (kebab-case, optional): ${sanitizeSkillName(args.nameHint)}`
+      : 'Suggested name (kebab-case, optional): (none)';
+  return [
+    `## Skill type: ${args.type}`,
+    template,
+    '## User guidance',
+    `- ${nameHintLine}`,
+    `- Purpose / problem this skill solves: ${args.purpose.trim().length > 0 ? args.purpose : '(not specified)'}`,
+    `- Focus / what to emphasize: ${args.focus.trim().length > 0 ? args.focus : '(not specified)'}`,
+    '## Conversation transcript',
+    transcript,
+  ].join('\n\n');
+}
+
+function buildTranscript(history: readonly ContextMessage[]): string {
+  const entries: string[] = [];
+  for (const message of history.slice(-MAX_HISTORY_MESSAGES)) {
+    if (message.origin?.kind === 'injection') continue;
+
+    const text = message.content
+      .filter((part) => part.type === 'text')
+      .map((part) => part.text)
+      .join('\n')
+      .slice(0, MAX_TEXT_LENGTH);
+    if (text.length === 0) continue;
+
+    const label = message.role === 'tool' ? 'tool_result' : message.role;
+    entries.push(`[${label}]\n${text}`);
+  }
+
+  let transcript = entries.join('\n\n');
+  if (transcript.length > MAX_TRANSCRIPT_LENGTH) {
+    transcript = transcript.slice(-MAX_TRANSCRIPT_LENGTH);
+    const firstBreak = transcript.indexOf('\n\n');
+    if (firstBreak > 0) {
+      transcript = `[... earlier messages truncated ...]\n\n${transcript.slice(firstBreak + 2)}`;
+    }
+  }
+  return transcript;
+}
+
+function parsePlanJson(rawText: string): SkillPlan {
+  const match = /```json\s*\n([\s\S]*?)\n```/.exec(rawText);
+  const jsonText = match?.[1]?.trim() ?? rawText.trim();
+
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(jsonText);
+  } catch (error) {
+    throw new EddyError(
+      ErrorCodes.REQUEST_INVALID,
+      `The skill plan is not valid JSON: ${error instanceof Error ? error.message : String(error)}`,
+    );
+  }
+
+  const result = z
+    .object({
+      name: z.string(),
+      description: z.string(),
+      content: z.string(),
+      files: z
+        .array(
+          z.object({
+            path: z.string(),
+            content: z.string(),
+          }),
+        )
+        .default([]),
+    })
+    .safeParse(parsed);
+
+  if (!result.success) {
+    throw new EddyError(
+      ErrorCodes.REQUEST_INVALID,
+      `The skill plan has an invalid structure: ${result.error.message}`,
+    );
+  }
+
+  return result.data;
+}
+
+function validateSkillPlan(plan: SkillPlan, nameHint: string): void {
+  if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(plan.name)) {
+    throw new EddyError(
+      ErrorCodes.REQUEST_INVALID,
+      `Generated skill name "${plan.name}" is not kebab-case. Please regenerate.`,
+    );
+  }
+
+  if (nameHint.trim().length > 0) {
+    const normalizedHint = sanitizeSkillName(nameHint);
+    if (plan.name !== normalizedHint) {
+      throw new EddyError(
+        ErrorCodes.REQUEST_INVALID,
+        `Generated skill name "${plan.name}" does not match the user's requested name "${normalizedHint}". Please use the requested name.`,
+      );
+    }
+  }
+
+  try {
+    parseSkillText({
+      skillMdPath: `/builtin/skills/${plan.name}.md`,
+      skillDirName: plan.name,
+      source: 'user',
+      text: plan.content,
+    });
+  } catch (error) {
+    throw new EddyError(
+      ErrorCodes.REQUEST_INVALID,
+      `Generated SKILL.md is not valid: ${error instanceof Error ? error.message : String(error)}`,
+    );
+  }
+}

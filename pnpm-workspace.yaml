@@ -1,0 +1,12 @@
+packages:
+  - packages/*
+  - apps/*
+
+catalog:
+  zod: ^4.3.6
+
+overrides:
+  "ssh2@1.17.0>cpu-features": "-"
+  "ssh2@1.17.0>nan": "-"
+patchedDependencies:
+  '@earendil-works/pi-tui@0.78.1': patches/@earendil-works__pi-tui@0.78.1.patch

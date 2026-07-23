@@ -1,0 +1,35 @@
+{
+  "name": "@eddy-code/config",
+  "version": "0.6.3",
+  "private": true,
+  "description": "Platform configuration and model management for Eddy Code",
+  "license": "MIT",
+  "author": "YuZhao <crake7even@gmail.com>",
+  "homepage": "https://github.com/crake7even/eddy-code/tree/main/packages/config#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/crake7even/eddy-code.git",
+    "directory": "packages/config"
+  },
+  "bugs": {
+    "url": "https://github.com/crake7even/eddy-code/issues"
+  },
+  "type": "module",
+  "imports": {
+    "#/*": [
+      "./src/*.ts",
+      "./src/*/index.ts"
+    ]
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.mjs"
+    }
+  },
+  "scripts": {
+    "build": "tsdown && node -e \"require('fs').copyFileSync('dist/index.d.mts','dist/index.d.ts')\"",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "clean": "node -e \"require('fs').rmSync('dist', {recursive: true, force: true})\""
+  }
+}

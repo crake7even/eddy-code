@@ -1,0 +1,58 @@
+name: agent
+description: Default Eddy Code agent
+
+systemPromptPath: ./system.md
+promptVars:
+  roleAdditional: ''
+
+tools:
+  - Read
+  - Write
+  - Edit
+  - Grep
+  - Glob
+  - Bash
+  - TaskList
+  - TaskOutput
+  - TaskStop
+  - CronCreate
+  - CronList
+  - CronDelete
+  - CreateGoal
+  - GetGoal
+  - SetGoalBudget
+  - UpdateGoal
+  - ReadMediaFile
+  - TodoList
+  - MemoryLookup
+  - MemoryConsolidatePlan
+  - MemoryConsolidateApply
+  - MemoryWrite
+  - Skill
+  - MakeSkillPlan
+  - MakeSkillApply
+  - WebSearch
+  - Agent
+  - WolfPack
+
+  - FetchURL
+  - AskUserQuestion
+  - EnterPlanMode
+  - ExitPlanMode
+  - mcp__*
+
+subagents:
+  coder:
+    description: Good at general software engineering tasks.
+  explore:
+    description: Fast codebase exploration with prompt-enforced read-only behavior.
+  plan:
+    description: Read-only implementation planning and architecture design.
+  verify:
+    description: Verification specialist. Runs build, test, and lint commands to validate code changes.
+  reviewer:
+    description: Code review specialist. Identifies bugs and API contract violations before merge.
+  oracle:
+    description: Deep debugging, architecture decisions, and second opinions.
+  writer:
+    description: Content production and research specialist. Produces structured, data-driven reports, analyses, and Markdown documents.

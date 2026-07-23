@@ -1,0 +1,40 @@
+{
+  "name": "@eddy-code/memory",
+  "version": "0.6.3",
+  "private": true,
+  "description": "Persistent memory memo store for cross-session knowledge sharing",
+  "license": "MIT",
+  "author": "YuZhao <crake7even@gmail.com>",
+  "homepage": "https://github.com/crake7even/eddy-code/tree/main/packages/memory#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/crake7even/eddy-code.git",
+    "directory": "packages/memory"
+  },
+  "bugs": {
+    "url": "https://github.com/crake7even/eddy-code/issues"
+  },
+  "type": "module",
+  "imports": {
+    "#/*": [
+      "./src/*.ts",
+      "./src/*/index.ts"
+    ]
+  },
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "default": "./src/index.ts"
+    }
+  },
+  "scripts": {
+    "build": "tsdown",
+    "test": "vitest run",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "clean": "rm -rf dist"
+  },
+  "dependencies": {
+    "fastembed": "^2.1.0",
+    "pathe": "^2.0.3"
+  }
+}
