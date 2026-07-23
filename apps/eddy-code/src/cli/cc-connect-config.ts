@@ -12,6 +12,7 @@ export interface EnsureCcConnectConfigOptions {
   configPath: string;
   platform: CcConnectPlatform;
   workDir: string;
+  platformProxy?: string;
 }
 
 export interface EnsureCcConnectConfigResult {
@@ -19,7 +20,9 @@ export interface EnsureCcConnectConfigResult {
   wrapperPath?: string;
   platformConfigured: boolean;
   platformHadToken: boolean;
+  platformHadProxy: boolean;
   needsAuth: boolean;
+  proxy?: string;
   changes: string[];
 }
 
@@ -164,14 +167,22 @@ function writeWrapper(
 export function getConfiguredPlatformInfo(
   content: string,
   platformType: string,
-): { configuredType?: string; platformConfigured: boolean; platformHadToken: boolean } {
+): {
+  configuredType?: string;
+  platformConfigured: boolean;
+  platformHadToken: boolean;
+  platformHadProxy: boolean;
+} {
   const lines = content.split(/\r?\n/);
   let inPlatform = false;
+  let inPlatformOptions = false;
   let blockType: string | undefined;
   let blockHadToken = false;
+  let blockHadProxy = false;
   let configuredType: string | undefined;
   let platformConfigured = false;
   let platformHadToken = false;
+  let platformHadProxy = false;
 
   const flush = () => {
     if (!blockType) return;
@@ -179,6 +190,7 @@ export function getConfiguredPlatformInfo(
     if (blockType === platformType) {
       platformConfigured = true;
       platformHadToken = blockHadToken;
+      platformHadProxy = blockHadProxy;
     }
   };
 
@@ -187,16 +199,27 @@ export function getConfiguredPlatformInfo(
     if (trimmed === "[[projects.platforms]]") {
       flush();
       inPlatform = true;
+      inPlatformOptions = false;
       blockType = undefined;
       blockHadToken = false;
+      blockHadProxy = false;
+      continue;
+    }
+    if (trimmed === "[projects.platforms.options]" && inPlatform) {
+      inPlatformOptions = true;
       continue;
     }
     if (trimmed.startsWith("[[") && trimmed !== "[[projects.platforms]]") {
       flush();
       inPlatform = false;
+      inPlatformOptions = false;
       blockType = undefined;
       blockHadToken = false;
+      blockHadProxy = false;
       continue;
+    }
+    if (trimmed.startsWith("[") && trimmed !== "[projects.platforms.options]") {
+      inPlatformOptions = false;
     }
     if (!inPlatform) continue;
 
@@ -205,15 +228,22 @@ export function getConfiguredPlatformInfo(
       blockType = typeMatch[1];
       continue;
     }
-    const tokenMatch = trimmed.match(/^token\s*=\s*["']([^"']*)["']/);
-    const token = tokenMatch?.[1];
-    if (token !== undefined && token.trim().length > 0) {
-      blockHadToken = true;
+    if (inPlatformOptions) {
+      const tokenMatch = trimmed.match(/^token\s*=\s*["']([^"']*)["']/);
+      const token = tokenMatch?.[1];
+      if (token !== undefined && token.trim().length > 0) {
+        blockHadToken = true;
+      }
+      const proxyMatch = trimmed.match(/^proxy\s*=\s*["']([^"']*)["']/);
+      const proxy = proxyMatch?.[1];
+      if (proxy !== undefined && proxy.trim().length > 0) {
+        blockHadProxy = true;
+      }
     }
   }
   flush();
 
-  return { configuredType, platformConfigured, platformHadToken };
+  return { configuredType, platformConfigured, platformHadToken, platformHadProxy };
 }
 
 function generateNewConfig(platform: CcConnectPlatform, cmd: string, workDir: string): string {
@@ -325,13 +355,20 @@ function ensureAgentOptions(content: string, cmd: string, workDir: string): { co
 function ensurePlatformBlock(
   content: string,
   platform: CcConnectPlatform,
-): { content: string; platformConfigured: boolean; platformHadToken: boolean; changes: string[] } {
+): {
+  content: string;
+  platformConfigured: boolean;
+  platformHadToken: boolean;
+  platformHadProxy: boolean;
+  changes: string[];
+} {
   const info = getConfiguredPlatformInfo(content, platform.type);
   if (info.platformConfigured) {
     return {
       content,
       platformConfigured: true,
       platformHadToken: info.platformHadToken,
+      platformHadProxy: info.platformHadProxy,
       changes: [],
     };
   }
@@ -341,8 +378,90 @@ function ensurePlatformBlock(
     content: `${content}${separator}\n[[projects.platforms]]\ntype = "${platform.type}"\n`,
     platformConfigured: false,
     platformHadToken: false,
+    platformHadProxy: false,
     changes: ["added-platform"],
   };
+}
+
+function findPlatformBlockRange(
+  lines: string[],
+  platformType: string,
+): { start: number; end: number } | undefined {
+  let start = -1;
+  let type: string | undefined;
+
+  const flush = (end: number): { start: number; end: number } | undefined => {
+    if (start >= 0 && type === platformType) return { start, end };
+    return undefined;
+  };
+
+  for (let i = 0; i < lines.length; i++) {
+    const trimmed = lines[i]?.trim() ?? "";
+    if (trimmed === "[[projects.platforms]]") {
+      const found = flush(i);
+      if (found) return found;
+      start = i;
+      type = undefined;
+      continue;
+    }
+    if (start < 0) continue;
+    const typeMatch = trimmed.match(/^type\s*=\s*["']([^"']+)["']/);
+    if (typeMatch) type = typeMatch[1];
+  }
+
+  return flush(lines.length);
+}
+
+function ensurePlatformProxy(
+  content: string,
+  platform: CcConnectPlatform,
+  proxy: string | undefined,
+): { content: string; proxy?: string; changes: string[] } {
+  if (platform.type !== "telegram" || proxy === undefined || proxy.trim().length === 0) {
+    return { content, changes: [] };
+  }
+
+  const lines = content.split(/\r?\n/);
+  const range = findPlatformBlockRange(lines, platform.type);
+  if (!range) return { content, changes: [] };
+
+  let optionsStart = -1;
+  for (let i = range.start + 1; i < range.end; i++) {
+    if ((lines[i]?.trim() ?? "") === "[projects.platforms.options]") {
+      optionsStart = i;
+      break;
+    }
+  }
+
+  if (optionsStart < 0) {
+    lines.splice(range.end, 0, "", "[projects.platforms.options]", `proxy = ${tomlString(proxy)}`);
+    return { content: lines.join("\n"), proxy, changes: ["added-platform-proxy"] };
+  }
+
+  let optionsEnd = range.end;
+  for (let i = optionsStart + 1; i < range.end; i++) {
+    const trimmed = lines[i]?.trim() ?? "";
+    if (trimmed.startsWith("[") && trimmed !== "[projects.platforms.options]") {
+      optionsEnd = i;
+      break;
+    }
+  }
+
+  const existingProxyIndex = lines.findIndex((line, index) =>
+    index > optionsStart && index < optionsEnd && /^proxy\s*=/.test(line.trim()),
+  );
+
+  if (existingProxyIndex >= 0) {
+    const nextLine = `proxy = ${tomlString(proxy)}`;
+    if (lines[existingProxyIndex] === nextLine) {
+      return { content, proxy, changes: [] };
+    }
+    lines[existingProxyIndex] = nextLine;
+    return { content: lines.join("\n"), proxy, changes: ["updated-platform-proxy"] };
+  }
+
+  lines.splice(optionsEnd, 0, `proxy = ${tomlString(proxy)}`);
+  return { content: lines.join("\n"), proxy, changes: ["added-platform-proxy"] };
 }
 
 export function ensureCcConnectConfig(
@@ -354,15 +473,27 @@ export function ensureCcConnectConfig(
   mkdirSync(dirname(options.configPath), { recursive: true });
 
   if (!existsSync(options.configPath)) {
-    const content = generateNewConfig(options.platform, command, options.workDir);
-    writeFileSync(options.configPath, content, "utf-8");
+    const platformProxy = options.platform.type === "telegram" ? options.platformProxy : undefined;
+    const content = ensurePlatformProxy(
+      generateNewConfig(options.platform, command, options.workDir),
+      options.platform,
+      platformProxy,
+    );
+    const finalContent = content.content;
+    writeFileSync(options.configPath, finalContent, "utf-8");
     return {
       configPath: options.configPath,
       wrapperPath: wrapper?.path,
       platformConfigured: false,
       platformHadToken: false,
-      needsAuth: options.platform.type === "weixin",
-      changes: ["created-config", ...(wrapper?.changed ? ["created-wrapper"] : [])],
+      platformHadProxy: false,
+      needsAuth: options.platform.type === "weixin" || options.platform.type === "telegram",
+      proxy: content.proxy,
+      changes: [
+        "created-config",
+        ...content.changes,
+        ...(wrapper?.changed ? ["created-wrapper"] : []),
+      ],
     };
   }
 
@@ -370,11 +501,17 @@ export function ensureCcConnectConfig(
   const agentTypeResult = ensureAgentType(original);
   const agentResult = ensureAgentOptions(agentTypeResult.content, command, options.workDir);
   const platformResult = ensurePlatformBlock(agentResult.content, options.platform);
-  const finalContent = platformResult.content;
+  const proxyResult = ensurePlatformProxy(
+    platformResult.content,
+    options.platform,
+    options.platformProxy,
+  );
+  const finalContent = proxyResult.content;
   const changes = [
     ...agentTypeResult.changes,
     ...agentResult.changes,
     ...platformResult.changes,
+    ...proxyResult.changes,
     ...(wrapper?.changed ? ["created-wrapper"] : []),
   ];
 
@@ -387,7 +524,10 @@ export function ensureCcConnectConfig(
     wrapperPath: wrapper?.path,
     platformConfigured: platformResult.platformConfigured,
     platformHadToken: platformResult.platformHadToken,
-    needsAuth: options.platform.type === "weixin" && !platformResult.platformHadToken,
+    platformHadProxy: platformResult.platformHadProxy,
+    needsAuth: (options.platform.type === "weixin" || options.platform.type === "telegram") &&
+      !platformResult.platformHadToken,
+    proxy: proxyResult.proxy,
     changes,
   };
 }

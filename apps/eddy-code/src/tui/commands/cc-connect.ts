@@ -12,7 +12,16 @@ import {
   resolveDefaultCcConnectConfigPath,
   type EnsureCcConnectConfigResult,
 } from "../../cli/cc-connect-config";
-import { getDaemonInstructions } from "../../cli/cc-connect-daemon";
+import {
+  buildDirectWindowsStartCommand,
+  getDaemonInstructions,
+} from "../../cli/cc-connect-daemon";
+import {
+  describePm2Status,
+  detectLocalProxyPort,
+  formatProxyUrl,
+  readPm2CcConnectStatus,
+} from "../../cli/cc-connect-preflight";
 import { ChoicePickerComponent, type ChoiceOption } from "../components/dialogs/choice-picker";
 import type { SlashCommandHost } from "./dispatch";
 
@@ -85,23 +94,7 @@ function platformSetupCommand(platform: PlatformDef): string {
 
 function readPm2Status(): string {
   if (process.platform !== "win32") return "Use cc-connect daemon status to check the service.";
-  try {
-    const out = execSync("pm2 jlist 2>nul", {
-      encoding: "utf-8",
-      timeout: 3000,
-      windowsHide: true,
-    }).trim();
-    const list = JSON.parse(out || "[]") as Array<{ name?: string; pm2_env?: { status?: string } }>;
-    const cc = list.find((entry) => entry.name === "cc-connect");
-    if (!cc) return "PM2 status: cc-connect is not registered yet. Use /cc to start it.";
-    const status = cc.pm2_env?.status ?? "unknown";
-    if (status === "online") return "PM2 status: cc-connect is online.";
-    if (status === "stopped") return "PM2 status: cc-connect is stopped. Use /cc to restart it.";
-    if (status === "errored") return "PM2 status: cc-connect is errored. Run pm2 logs cc-connect.";
-    return `PM2 status: cc-connect is ${status}.`;
-  } catch {
-    return "PM2 status: pm2 is not available or not running.";
-  }
+  return describePm2Status(readPm2CcConnectStatus());
 }
 
 function buildNoticeText(platform: PlatformDef, result: EnsureCcConnectConfigResult): string {
@@ -128,9 +121,25 @@ function buildNoticeText(platform: PlatformDef, result: EnsureCcConnectConfigRes
   if (result.needsAuth) {
     parts.push("");
     parts.push("Platform authentication is still required.");
-    parts.push("The terminal will show a QR code; the PNG copy is saved to Desktop as a backup.");
+    if (platform.type === "weixin") {
+      parts.push("The terminal will show a QR code; the PNG copy is saved to Desktop as a backup.");
+    }
+    if (platform.type === "telegram") {
+      parts.push("Create a bot with @BotFather and paste the Telegram bot token when cc-connect asks.");
+    }
     parts.push("");
     parts.push(`  ${platformSetupCommand(platform)}`);
+  }
+
+  if (platform.type === "telegram") {
+    parts.push("");
+    if (result.proxy) {
+      parts.push(`Telegram proxy: ${result.proxy}`);
+    } else if (result.platformHadProxy) {
+      parts.push("Telegram proxy: already configured.");
+    } else {
+      parts.push("Telegram proxy: no local proxy port detected. If Telegram API is unreachable, start your proxy and run /cc-connect again.");
+    }
   }
 
   parts.push("");
@@ -188,6 +197,11 @@ function buildNoticeText(platform: PlatformDef, result: EnsureCcConnectConfigRes
   parts.push("");
   parts.push("Auto-start is handled by the generated cc-connect-startup.bat when available.");
   parts.push("To restart manually: pm2 resurrect");
+  if (process.platform === "win32") {
+    parts.push("");
+    parts.push("Windows direct fallback when PM2 keeps failing:");
+    parts.push(`  ${buildDirectWindowsStartCommand(CONFIG_PATH)}`);
+  }
 
   return parts.join("\n");
 }
@@ -227,10 +241,12 @@ export async function handleChannelCommand(host: SlashCommandHost, _args: string
         return;
       }
 
+      const proxyPort = platform.type === "telegram" ? detectLocalProxyPort() : undefined;
       const result = ensureCcConnectConfig({
         configPath: CONFIG_PATH,
         platform,
         workDir: process.cwd(),
+        platformProxy: proxyPort !== undefined ? formatProxyUrl(proxyPort) : undefined,
       });
       const title = result.needsAuth
         ? `${platform.name} needs authentication`

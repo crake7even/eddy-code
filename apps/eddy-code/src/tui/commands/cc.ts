@@ -11,8 +11,8 @@
 import { exec } from 'node:child_process';
 
 import {
+  buildPm2LifecycleCommand,
   ccConnectSupportsDaemon,
-  detectCcConnectEntry,
 } from '../../cli/cc-connect-daemon';
 import { ChoicePickerComponent } from '../components/dialogs/choice-picker';
 import type { ChoiceOption } from '../components/dialogs/choice-picker';
@@ -60,8 +60,6 @@ function resolveDaemonMode(): DaemonMode {
   }
 
   // Windows without daemon — fall back to pm2
-  const entry = detectCcConnectEntry();
-  const target = entry ?? 'cc-connect';
   return {
     method: 'pm2 (Node.js process manager)',
     buildCmd: (action) => {
@@ -70,12 +68,12 @@ function resolveDaemonMode(): DaemonMode {
           // Try restart first (handles already-registered processes and
           // freshly-resurrected ones).  If that fails, register from scratch
           // and persist so pm2 resurrect can recover it after reboot.
-          return `pm2 restart cc-connect 2>nul || pm2 start "${target}" --name cc-connect && pm2 save`;
+          return buildPm2LifecycleCommand('start');
         case 'stop':
-          return 'pm2 stop cc-connect';
+          return buildPm2LifecycleCommand('stop');
         case 'restart':
           // Same fallback as start: prefer restart, fall back to fresh start.
-          return `pm2 restart cc-connect 2>nul || pm2 start "${target}" --name cc-connect && pm2 save`;
+          return buildPm2LifecycleCommand('restart');
       }
     },
   };

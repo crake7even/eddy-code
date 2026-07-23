@@ -39,6 +39,13 @@ export interface DaemonInstructions {
   warning?: string;
 }
 
+export type CcConnectDaemonAction = "start" | "stop" | "restart";
+
+export interface CcConnectCommandTarget {
+  target: string;
+  interpreterNone: boolean;
+}
+
 // ─── Detection ─────────────────────────────────────────────────────────────
 
 /**
@@ -122,6 +129,72 @@ export function detectCcConnectEntry(): string | null {
 
 // ─── Startup bat helper ──────────────────────────────────────────────────
 
+function detectCcConnectCmd(): string | null {
+  try {
+    const command = process.platform === "win32" ? "where cc-connect" : "which cc-connect";
+    const out = execSync(command, {
+      encoding: "utf-8",
+      timeout: 3000,
+      windowsHide: true,
+    });
+    const candidates = out
+      .trim()
+      .split(/[\r\n]+/)
+      .map((line) => line.trim())
+      .filter(Boolean);
+    if (process.platform === "win32") {
+      return candidates.find((path) => path.toLowerCase().endsWith(".cmd")) ?? candidates[0] ?? null;
+    }
+    return candidates[0] ?? null;
+  } catch {
+    return null;
+  }
+}
+
+export function detectCcConnectCommandTarget(): CcConnectCommandTarget {
+  const entry = detectCcConnectEntry();
+  if (entry) return { target: entry, interpreterNone: false };
+
+  const target = detectCcConnectCmd() ?? "cc-connect";
+  return {
+    target,
+    interpreterNone: process.platform === "win32" && target.toLowerCase().endsWith(".cmd"),
+  };
+}
+
+function quoteCmdArg(value: string): string {
+  return `"${value.replace(/"/g, '""')}"`;
+}
+
+function quotePowerShellSingleArg(value: string): string {
+  return `'${value.replace(/'/g, "''")}'`;
+}
+
+export function buildPm2StartCommand(): string {
+  const target = detectCcConnectCommandTarget();
+  const interpreter = target.interpreterNone ? " --interpreter none" : "";
+  return `pm2 start ${quoteCmdArg(target.target)} --name cc-connect${interpreter}`;
+}
+
+export function buildPm2LifecycleCommand(action: CcConnectDaemonAction): string {
+  if (action === "stop") return "pm2 stop cc-connect";
+  const start = buildPm2StartCommand();
+  return `(pm2 describe cc-connect >nul 2>nul && pm2 restart cc-connect || ${start}) && pm2 save`;
+}
+
+export function buildDirectWindowsStartCommand(configPath?: string): string {
+  const target = detectCcConnectCommandTarget();
+  const configArgs = configPath
+    ? [quotePowerShellSingleArg("--config"), quotePowerShellSingleArg(configPath)]
+    : [];
+  if (target.target.toLowerCase().endsWith(".js")) {
+    const args = [quotePowerShellSingleArg(target.target), ...configArgs].join(", ");
+    return `powershell -NoProfile -Command "Start-Process -WindowStyle Hidden -FilePath 'node' -ArgumentList @(${args})"`;
+  }
+  const args = configArgs.length > 0 ? ` -ArgumentList @(${configArgs.join(", ")})` : "";
+  return `powershell -NoProfile -Command "Start-Process -WindowStyle Hidden -FilePath ${quotePowerShellSingleArg(target.target)}${args}"`;
+}
+
 /**
  * Write the Windows startup .bat file directly (no shell echo).
  * Returns the written path, or null if the Startup folder doesn't exist.
@@ -188,11 +261,7 @@ export function getDaemonInstructions(
     }
 
     // daemon genuinely unavailable on this machine — pm2 is the only path
-    const entry = detectCcConnectEntry();
-
-    const pm2StartCmd = entry
-      ? `pm2 start "${entry}" --name cc-connect`
-      : "pm2 start cc-connect --name cc-connect";
+    const pm2StartCmd = buildPm2StartCommand();
 
     // Use the Windows Startup folder for reliable auto-start after reboot.
     // schtasks + "pm2 resurrect" fails because the PM2 daemon isn't alive
@@ -273,6 +342,12 @@ export function getDaemonInstructions(
       '  "Script already launched" → pm2 已经注册过了，用 pm2 restart cc-connect 即可。',
       '  "stopped / errored"      → 用 pm2 logs cc-connect 查看错误原因。',
       '  重新安装 cc-connect 后   → pm2 delete cc-connect 再重新走启动步骤。',
+    );
+
+    helpCommands.push(
+      "",
+      "Windows direct fallback when PM2 keeps failing:",
+      `  ${buildDirectWindowsStartCommand()}`,
     );
 
     return {

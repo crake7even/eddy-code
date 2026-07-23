@@ -16,6 +16,10 @@ import {
   resolveDefaultCcConnectConfigPath,
 } from './cc-connect-config';
 import { getDaemonInstructions } from './cc-connect-daemon';
+import {
+  detectLocalProxyPort,
+  formatProxyUrl,
+} from './cc-connect-preflight';
 
 interface PlatformDef {
   type: string;
@@ -183,13 +187,24 @@ export async function runChannelSetup(): Promise<void> {
   console.log('');
 
   const configPath = resolveDefaultCcConnectConfigPath();
+  const proxyPort = platform.type === 'telegram' ? detectLocalProxyPort() : undefined;
   const result = ensureCcConnectConfig({
     configPath,
     platform,
     workDir: resolveWorkDir(),
+    platformProxy: proxyPort !== undefined ? formatProxyUrl(proxyPort) : undefined,
   });
   console.log(`  Config checked: ${configPath}`);
   if (result.wrapperPath) console.log(`  Eddy wrapper: ${result.wrapperPath}`);
+  if (platform.type === 'telegram') {
+    if (result.proxy) {
+      console.log(`  Telegram proxy: ${result.proxy}`);
+    } else if (result.platformHadProxy) {
+      console.log('  Telegram proxy: already configured');
+    } else {
+      console.log('  Telegram proxy: no local proxy port detected');
+    }
+  }
   if (result.changes.length > 0) console.log(`  Changes: ${result.changes.join(', ')}`);
   if (result.needsAuth) console.log('  Platform authentication is still required.');
   console.log('');

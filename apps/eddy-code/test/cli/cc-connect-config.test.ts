@@ -5,6 +5,16 @@ import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
 import { ensureCcConnectConfig } from '#/cli/cc-connect-config';
+import {
+  buildDirectWindowsStartCommand,
+  buildPm2LifecycleCommand,
+  buildPm2StartCommand,
+  detectCcConnectCommandTarget,
+} from '#/cli/cc-connect-daemon';
+import {
+  describePm2Status,
+  formatProxyUrl,
+} from '#/cli/cc-connect-preflight';
 
 const platform = { type: 'weixin', name: 'Weixin' };
 
@@ -112,5 +122,82 @@ describe('cc-connect config generation', () => {
     expect(content).toContain('[projects.agent]');
     expect(content).toContain('type = "claudecode"');
     expect(result.changes).toContain('updated-agent-type');
+  });
+
+  it('preserves Telegram token settings and adds detected platform proxy', () => {
+    const { dir, configPath } = tempConfig('eddy cc telegram ');
+    writeFileSync(
+      configPath,
+      [
+        '[[projects]]',
+        'name = "default"',
+        '',
+        '[projects.agent]',
+        'type = "claudecode"',
+        '',
+        '[[projects.platforms]]',
+        'type = "telegram"',
+        '',
+        '[projects.platforms.options]',
+        'token = "telegram-secret"',
+        'allow_from = "*"',
+        '',
+      ].join('\n'),
+      'utf-8',
+    );
+
+    const result = ensureCcConnectConfig({
+      configPath,
+      platform: { type: 'telegram', name: 'Telegram' },
+      workDir: join(dir, 'project'),
+      platformProxy: 'http://127.0.0.1:7897',
+    });
+
+    const content = readFileSync(configPath, 'utf-8');
+    expect(content).toContain('token = "telegram-secret"');
+    expect(content).toContain('allow_from = "*"');
+    expect(content).toContain("proxy = 'http://127.0.0.1:7897'");
+    expect(result.platformHadToken).toBe(true);
+    expect(result.needsAuth).toBe(false);
+    expect(result.proxy).toBe('http://127.0.0.1:7897');
+    expect(result.changes).toContain('added-platform-proxy');
+  });
+
+  it('formats proxy and PM2 status diagnostics', () => {
+    expect(formatProxyUrl(7897)).toBe('http://127.0.0.1:7897');
+    expect(describePm2Status({ available: true, registered: false })).toContain(
+      'not registered',
+    );
+    expect(describePm2Status({ available: true, registered: true, status: 'errored' })).toContain(
+      'errored',
+    );
+  });
+
+  it('builds a Windows PM2 command that avoids executing cc-connect.cmd as JavaScript', () => {
+    if (process.platform !== 'win32') return;
+
+    const target = detectCcConnectCommandTarget();
+    const command = buildPm2StartCommand();
+
+    expect(command).toContain('pm2 start');
+    if (target.interpreterNone) {
+      expect(command).toContain('--interpreter none');
+    } else {
+      expect(command.toLowerCase()).not.toContain('cc-connect.cmd');
+    }
+  });
+
+  it('builds stable Windows lifecycle and direct fallback commands', () => {
+    if (process.platform !== 'win32') return;
+
+    const lifecycle = buildPm2LifecycleCommand('restart');
+    expect(lifecycle).toContain('(pm2 describe cc-connect');
+    expect(lifecycle).toContain('pm2 save');
+
+    const fallback = buildDirectWindowsStartCommand('C:\\Users\\Yuzhao\\.cc-connect\\config.toml');
+    expect(fallback).toContain('Start-Process');
+    expect(fallback).toContain('-WindowStyle Hidden');
+    expect(fallback).not.toContain('-FilePath "');
+    expect(fallback).toContain("'C:\\Users\\Yuzhao\\.cc-connect\\config.toml'");
   });
 });

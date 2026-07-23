@@ -1,5 +1,11 @@
 # eddy-code
 
+## 0.6.5
+
+### Patch Changes
+
+- Improve Windows cc-connect onboarding and service handling. Eddy Code now uses a safer PM2 command path for cc-connect, preserves Telegram platform tokens while adding detected proxy settings, reports PM2/proxy diagnostics more clearly, and avoids terminal scrollback jumps during TUI full redraws.
+
 ## 0.6.4
 
 ### Patch Changes
