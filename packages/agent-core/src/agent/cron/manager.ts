@@ -1,4 +1,4 @@
-﻿/**
+/**
  * CronManager 鈥?Agent-facing facade for the cron scheduler.
  *
  * This layer sits between the raw `CronScheduler` (which knows nothing

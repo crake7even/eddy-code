@@ -1,4 +1,4 @@
-﻿import { mkdtemp, writeFile } from 'node:fs/promises';
+import { mkdtemp, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -137,7 +137,7 @@ describe('loadPluginMarketplace', () => {
     await writeFile(file, JSON.stringify({ plugins: [{ displayName: 'Missing id' }] }), 'utf8');
 
     await expect(loadPluginMarketplace({ workDir: '/tmp/work', source: file })).rejects.toThrow(
-      /蹇呴』瀹氫箟 "id"/,
+      /必须定义 "id"/,
     );
   });
 
@@ -153,7 +153,7 @@ describe('loadPluginMarketplace', () => {
     );
 
     await expect(loadPluginMarketplace({ workDir: '/tmp/work', source: file })).rejects.toThrow(
-      /"tier" 蹇呴』鏄互涓嬩箣涓€/,
+      /"tier" 必须是以下之一/,
     );
   });
 });

@@ -1,4 +1,4 @@
-﻿import type { Component } from '@earendil-works/pi-tui';
+import type { Component } from '@earendil-works/pi-tui';
 import { describe, expect, it } from 'vitest';
 
 import { pickResultRenderer } from '#/tui/components/messages/tool-renderers/registry';
@@ -39,7 +39,7 @@ describe('tool-result registry', () => {
     const renderer = pickResultRenderer('Bash');
     const out = strip(joinRender(renderer(call('Bash'), result('one\ntwo\nthree\nfour'), ctx)));
     expect(out).toContain('one');
-    expect(out).toContain('... (1 more line, ctrl+o to expand)');
+    expect(out).toContain('...（还有 1 行，按 ctrl+o 展开）');
   });
 
   it('Read renders no body when collapsed (header chip carries the count)', () => {

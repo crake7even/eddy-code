@@ -1,4 +1,4 @@
-﻿import { existsSync } from 'node:fs';
+import { existsSync } from 'node:fs';
 import { readFile, mkdir, rm, stat, utimes } from 'node:fs/promises';
 import { join } from 'node:path';
 

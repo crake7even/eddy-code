@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Persistent representation of a cron task.
  *
  *   - `id` 鈥?8-hex; jitter is keyed off this hash, so stable id == stable

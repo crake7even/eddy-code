@@ -1,4 +1,4 @@
-﻿import { readFile, readdir, stat } from 'node:fs/promises';
+import { readFile, readdir, stat } from 'node:fs/promises';
 import { join } from 'node:path';
 
 import { OldEddyJsonSchema, OldSessionStateSchema } from '../eddy-cli-schema.js';

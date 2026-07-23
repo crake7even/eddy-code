@@ -1,4 +1,4 @@
-﻿import { APIEmptyResponseError } from '#/errors';
+import { APIEmptyResponseError } from '#/errors';
 import { generate } from '#/generate';
 import type { Message, StreamedMessagePart, ToolCall } from '#/message';
 import type { ChatProvider, StreamedMessage, ThinkingEffort } from '#/provider';

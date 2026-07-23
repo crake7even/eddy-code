@@ -1,4 +1,4 @@
-﻿import { existsSync, mkdtempSync, readFileSync } from 'node:fs';
+import { existsSync, mkdtempSync, readFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'pathe';
 
@@ -846,7 +846,7 @@ describe('Agent compaction', () => {
       [wire] usage.record             { "model": "eddy-code", "usage": { "inputOther": 857, "output": 7, "inputCacheRead": 0, "inputCacheCreation": 0 }, "usageScope": "session", "time": "<time>" }
       [emit] agent.status.updated     { "model": "eddy-code", "contextTokens": 0, "maxContextTokens": 256000, "contextUsage": 0, "planMode": false, "permission": "manual", "usage": { "byModel": { "eddy-code": { "inputOther": 857, "output": 7, "inputCacheRead": 0, "inputCacheCreation": 0 } }, "total": { "inputOther": 857, "output": 7, "inputCacheRead": 0, "inputCacheCreation": 0 } } }
       [wire] full_compaction.cancel   { "time": "<time>" }
-      [emit] compaction.cancelled     { "reason": "涓婁笅鏂囧凡琚洿鏀癸紙濡?/revoke锛夛紝鍘嬬缉宸插彇娑? }
+      [emit] compaction.cancelled     { "reason": "Context changed during compaction; canceled." }
     `);
     expect(ctx.lastLlmInput()).toMatchInlineSnapshot(`
       system: "You are a conversation context compaction assistant. Your job is to summarize the conversation above into a structured summary. Output text only. DO NOT CALL ANY TOOLS. Follow the compaction instruction in the last user message exactly. Pay special attention to the Memory Memo Extraction section 鈥?you MUST output memory-memo blocks for every completed task loop."

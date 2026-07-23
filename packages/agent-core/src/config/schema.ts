@@ -1,4 +1,4 @@
-﻿import { HOOK_EVENT_TYPES } from '../session/hooks/types';
+import { HOOK_EVENT_TYPES } from '../session/hooks/types';
 import { parsePattern } from '#/agent/permission/matches-rule';
 import { ErrorCodes, EddyError } from '#/errors';
 import { z } from 'zod';

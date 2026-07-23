@@ -1,4 +1,4 @@
-﻿// Message types
+// Message types
 export {
   createAssistantMessage,
   createToolMessage,

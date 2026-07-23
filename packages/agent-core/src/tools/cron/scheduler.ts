@@ -1,4 +1,4 @@
-﻿/**
+/**
  * CronScheduler 鈥?the scheduling engine.
  *
  * This is the bottom of the cron stack: it knows about tasks, clocks,

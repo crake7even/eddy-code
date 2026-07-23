@@ -1,4 +1,4 @@
-﻿/**
+/**
  * rg-locator 鈥?hybrid ripgrep binary resolution.
  *
  * Lookup order (first hit wins):

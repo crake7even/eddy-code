@@ -1,4 +1,4 @@
-﻿import { describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { OldEddyJsonSchema, OldSessionStateSchema } from '../src/eddy-cli-schema.js';
 
 describe('OldEddyJsonSchema', () => {

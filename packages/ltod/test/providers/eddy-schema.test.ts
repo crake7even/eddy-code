@@ -1,4 +1,4 @@
-﻿import { derefJsonSchema, normalizeEddyToolSchema } from '#/providers/eddy-schema';
+import { derefJsonSchema, normalizeEddyToolSchema } from '#/providers/eddy-schema';
 import { describe, expect, it } from 'vitest';
 
 describe('derefJsonSchema', () => {

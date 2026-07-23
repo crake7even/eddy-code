@@ -1,4 +1,4 @@
-﻿import { generate } from '#/generate';
+import { generate } from '#/generate';
 import type { ContentPart, Message, ToolCall } from '#/message';
 import { extractUsageFromChunk, EddyChatProvider } from '#/providers/eddy';
 import { extractUsage } from '#/providers/openai-common';

@@ -1,4 +1,4 @@
-﻿/**
+/**
  * CronCreateTool 鈥?schedule a prompt to be re-injected into this session
  * at a future wall-clock time, either once (`recurring: false`) or on a
  * cron cadence (`recurring: true`, the default).

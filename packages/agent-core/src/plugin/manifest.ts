@@ -1,4 +1,4 @@
-﻿import { readdir, realpath, readFile, stat } from 'node:fs/promises';
+import { readdir, realpath, readFile, stat } from 'node:fs/promises';
 import path from 'node:path';
 
 import { McpServerConfigSchema, type McpServerConfig } from '../config/schema';

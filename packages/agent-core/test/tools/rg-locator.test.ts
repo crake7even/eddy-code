@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Covers: rg-locator (ripgrep hybrid binary resolution).
  *
  * Pure-lookup pins (no real CDN download):

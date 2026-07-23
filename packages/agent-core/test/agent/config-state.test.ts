@@ -1,4 +1,4 @@
-﻿import { describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
 
 import { ProviderManager } from '../../src/session/provider-manager';
 import { testAgent } from './harness';

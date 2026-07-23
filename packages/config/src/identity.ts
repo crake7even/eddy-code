@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Eddy host and device identity header factories.
  *
  * The caller owns the host identity (product name + host app version)

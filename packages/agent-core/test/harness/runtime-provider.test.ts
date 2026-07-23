@@ -1,4 +1,4 @@
-﻿import { describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
 
 import type { EddyConfig } from '../../src/config';
 import { ErrorCodes, EddyError } from '../../src/errors';

@@ -1,4 +1,4 @@
-﻿import { writeFile, mkdir } from 'node:fs/promises';
+import { writeFile, mkdir } from 'node:fs/promises';
 import { join } from 'node:path';
 import type { OldSessionState } from '../eddy-cli-schema.js';
 

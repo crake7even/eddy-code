@@ -1,4 +1,4 @@
-﻿import { derefJsonSchema } from '#/providers/eddy-schema';
+import { derefJsonSchema } from '#/providers/eddy-schema';
 import { createToolMessage, extractText } from '#/message';
 import type { Message, StreamedMessagePart } from '#/message';
 import type { ChatProvider, StreamedMessage, ThinkingEffort } from '#/provider';

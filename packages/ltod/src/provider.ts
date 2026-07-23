@@ -1,4 +1,4 @@
-﻿import type { ModelCapability } from './capability';
+import type { ModelCapability } from './capability';
 import type { Message, StreamedMessagePart, VideoURLPart } from './message';
 import type { Tool } from './tool';
 import type { TokenUsage } from './usage';

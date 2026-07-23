@@ -1,4 +1,4 @@
-﻿import { join } from 'pathe';
+import { join } from 'pathe';
 
 import { extractError, formatEntry, redactCtx } from './formatter';
 import { RotatingFileSink } from './sinks';

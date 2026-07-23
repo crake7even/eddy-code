@@ -1,4 +1,4 @@
-﻿List all cron jobs currently scheduled in this session.
+List all cron jobs currently scheduled in this session.
 
 Use this tool to see every pending cron task 鈥?both recurring jobs and
 one-shot reminders 鈥?that you (or the user) have scheduled with

@@ -1,4 +1,4 @@
-﻿/**
+/**
  * `eddy migrate` 鈥?permanently disabled. The command is kept for backwards
  * compatibility but prints a notice and exits.
  */
@@ -14,7 +14,7 @@ describe('registerMigrateCommand', () => {
     registerMigrateCommand(program, () => {});
     const sub = program.commands.find((c) => c.name() === 'migrate');
     expect(sub).toBeDefined();
-    expect(sub!.description()).toContain('杩佺Щ');
+    expect(sub!.description()).toContain('迁移');
     expect(sub!.options).toHaveLength(0);
   });
 
@@ -24,7 +24,7 @@ describe('registerMigrateCommand', () => {
     const exitSpy = vi.spyOn(process, 'exit').mockImplementation(() => undefined as never);
     registerMigrateCommand(program, () => {});
     program.parse(['migrate'], { from: 'user' });
-    expect(stdoutSpy).toHaveBeenCalledWith('杩佺Щ鍔熻兘宸插彇娑堬紝涓嶅啀鏀寔浠?eddy-code 瀵煎叆鏁版嵁銆俓n');
+    expect(stdoutSpy).toHaveBeenCalledWith('迁移功能已取消，不再支持从 eddy-code 导入数据。\n');
     expect(exitSpy).toHaveBeenCalledWith(0);
     stdoutSpy.mockRestore();
     exitSpy.mockRestore();

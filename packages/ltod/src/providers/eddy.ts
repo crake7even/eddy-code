@@ -1,4 +1,4 @@
-﻿import { UNKNOWN_CAPABILITY, type ModelCapability } from '#/capability';
+import { UNKNOWN_CAPABILITY, type ModelCapability } from '#/capability';
 import { normalizeEddyToolSchema } from './eddy-schema';
 import type { ContentPart, Message, StreamedMessagePart, ToolCall } from '#/message';
 import type {

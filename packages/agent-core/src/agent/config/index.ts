@@ -1,4 +1,4 @@
-﻿import {
+import {
   createProvider,
   UNKNOWN_CAPABILITY,
   type ChatProvider,

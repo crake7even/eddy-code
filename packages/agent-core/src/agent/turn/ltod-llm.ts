@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Ltod-backed implementation of the loop `LLM` interface.
  *
  * Bridges the new `loop/llm.ts` contract onto

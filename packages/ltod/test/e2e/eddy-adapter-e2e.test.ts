@@ -1,4 +1,4 @@
-﻿import type { Message, StreamedMessagePart, ToolCall } from '#/message';
+import type { Message, StreamedMessagePart, ToolCall } from '#/message';
 import type { StreamedMessage } from '#/provider';
 import { EddyChatProvider } from '#/providers/eddy';
 import type { Tool } from '#/tool';

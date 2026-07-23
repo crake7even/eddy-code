@@ -1,4 +1,4 @@
-﻿import { ErrorCodes, EddyError } from '#/errors';
+import { ErrorCodes, EddyError } from '#/errors';
 import { parseBooleanEnv } from './resolve';
 import {
   validateConfig,

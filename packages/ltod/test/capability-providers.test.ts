@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Per-provider `getCapability(model?)` table tests.
  *
  * For every provider:

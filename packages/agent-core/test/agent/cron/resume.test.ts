@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Resume / cross-restart persistence for CronManager.
  *
  * The manager's `addTask` / `removeTasks` wrappers mirror every mutation

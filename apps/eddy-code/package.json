@@ -67,12 +67,12 @@
     "zod": "^4.3.6"
   },
   "devDependencies": {
-    "@modelcontextprotocol/sdk": "^1.29.0",
     "@eddy-code/agent-core": "workspace:^",
     "@eddy-code/config": "workspace:^",
+    "@eddy-code/memory": "workspace:*",
     "@eddy-code/migration-legacy": "workspace:^",
     "@eddy-code/sdk": "workspace:^",
-    "@eddy-code/memory": "workspace:*",
+    "@modelcontextprotocol/sdk": "^1.29.0",
     "@types/semver": "^7.7.0",
     "tsx": "^4.21.0"
   },

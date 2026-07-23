@@ -1,4 +1,4 @@
-﻿import {
+import {
   createRPC,
   ErrorCodes,
   EddyCore,

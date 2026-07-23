@@ -1,4 +1,4 @@
-﻿import { generate } from '#/generate';
+import { generate } from '#/generate';
 import type { GenerateCallbacks } from '#/generate';
 import type { Message, StreamedMessagePart, TextPart, ThinkPart, ToolCall } from '#/message';
 import { extractText } from '#/message';

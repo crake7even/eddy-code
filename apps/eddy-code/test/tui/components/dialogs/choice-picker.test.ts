@@ -1,4 +1,4 @@
-﻿import type { ModelAlias } from '@eddy-code/sdk';
+import type { ModelAlias } from '@eddy-code/sdk';
 import { describe, expect, it, vi } from 'vitest';
 
 import { ChoicePickerComponent } from '#/tui/components/dialogs/choice-picker';
@@ -39,7 +39,7 @@ describe('ChoicePickerComponent', () => {
 
     const out = picker.render(120).map(strip);
 
-    expect(out).toContain('  鉂?Manual 鈫?current');
+    expect(out).toContain('  ❯ Manual ← current');
     expect(out).toContain('    Ask before commands, edits, and other risky actions.');
     expect(out).toContain('    Automatically approve tool actions and plan transitions.');
   });
@@ -54,7 +54,7 @@ describe('ChoicePickerComponent', () => {
       onSelect,
       onCancel,
     });
-    expect(editor.render(120).map(strip)).toContain('  鉂?Vim 鈫?current');
+    expect(editor.render(120).map(strip)).toContain('  ❯ Vim ← current');
 
     const model = new ModelSelectorComponent({
       models: {
@@ -73,7 +73,7 @@ describe('ChoicePickerComponent', () => {
       onCancel,
     });
     const modelOutput = model.render(120).map(strip);
-    expect(modelOutput).toContain('  鉂?Eddy K2 (Eddy Code) 鈫?current');
+    expect(modelOutput).toContain('  ❯ Eddy K2 (Eddy Code) ← current');
     expect(modelOutput).toContain(' Thinking');
     expect(modelOutput).toContain('  [ On ]    Off  ');
 
@@ -83,7 +83,7 @@ describe('ChoicePickerComponent', () => {
       onSelect,
       onCancel,
     });
-    expect(theme.render(120).map(strip)).toContain('  鉂?娴呰壊 鈫?current');
+    expect(theme.render(120).map(strip)).toContain('  ❯ 浅色 ← current');
 
     const permission = new PermissionSelectorComponent({
       currentValue: 'manual',
@@ -91,7 +91,7 @@ describe('ChoicePickerComponent', () => {
       onSelect,
       onCancel,
     });
-    expect(permission.render(120).map(strip)).toContain('  鉂?鎵嬪姩 鈫?current');
+    expect(permission.render(120).map(strip)).toContain('  ❯ 手动 ← current');
 
     const settings = new SettingsSelectorComponent({
       colors: darkColors,
@@ -99,8 +99,8 @@ describe('ChoicePickerComponent', () => {
       onCancel,
     });
     const settingsOutput = settings.render(120).map(strip);
-    expect(settingsOutput).toContain('  鉂?妯″瀷');
-    expect(settingsOutput.some((line) => line.includes('model'))).toBe(true);
+    expect(settingsOutput).toContain('  ❯ 模型');
+    expect(settingsOutput.some((line) => line.includes('切换当前模型'))).toBe(true);
   });
 
   it('submits the selected model and inline thinking state', () => {
@@ -376,7 +376,7 @@ describe('ModelSelectorComponent search and pagination', () => {
     });
     for (const ch of 'beta') selector.handleInput(ch);
     const out = rendered(selector);
-    expect(out).toContain('鎼滅储锛歜eta');
+    expect(out).toContain('搜索：beta');
     expect(out).toContain('beta (p)');
     expect(out).not.toContain('alpha (p)');
     expect(out).not.toContain('gamma (p)');

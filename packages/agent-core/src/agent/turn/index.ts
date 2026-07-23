@@ -1,4 +1,4 @@
-﻿import {
+import {
   APIContextOverflowError,
   grandTotal as ltodGrandTotal,
   type ContentPart,

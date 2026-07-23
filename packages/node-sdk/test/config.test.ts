@@ -1,4 +1,4 @@
-﻿import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
@@ -39,16 +39,16 @@ show_thinking_stream = true
 merge_all_available_skills = true
 extra_skill_dirs = ["~/team-skills", ".agents/team-skills"]
 
-[providers.eddy-code-for-coding]
+[providers.eddy-for-coding]
 type = "eddy"
 base_url = "https://api.eddy-code.local/coding/v1"
 api_key = "sk-xxx"
 custom_headers = { "X-Custom-Header" = "value" }
 
-[providers.eddy-code-for-coding.env]
+[providers.eddy-for-coding.env]
 GOOGLE_CLOUD_PROJECT = "project-1"
 
-[models.eddy-code-for-coding]
+[models.eddy-for-coding]
 provider = "eddy-for-coding"
 model = "eddy-for-coding"
 max_context_size = 262144

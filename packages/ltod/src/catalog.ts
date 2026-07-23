@@ -1,4 +1,4 @@
-﻿import type { ModelCapability } from './capability';
+import type { ModelCapability } from './capability';
 import type { ProviderType } from './providers';
 
 /**

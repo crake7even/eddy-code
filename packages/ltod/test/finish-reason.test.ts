@@ -1,4 +1,4 @@
-﻿import { generate } from '#/generate';
+import { generate } from '#/generate';
 import type { Message, StreamedMessagePart } from '#/message';
 import { MockChatProvider } from './fixtures/mock-provider';
 import type { FinishReason } from '#/provider';

@@ -1,4 +1,4 @@
-﻿import { mkdtemp, readFile, rm } from 'node:fs/promises';
+import { mkdtemp, readFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'pathe';
 import { setTimeout as sleep } from 'node:timers/promises';
@@ -360,7 +360,7 @@ describe('McpConnectionManager', () => {
       });
       const entry = cm.get('gated');
       expect(entry?.status).toBe('needs-auth');
-      expect(entry?.error).toContain('闇€瑕?OAuth 璁よ瘉');
+      expect(entry?.error).toContain('需要 OAuth 认证');
       expect(entry?.toolCount).toBe(0);
     } finally {
       await cm.shutdown();
@@ -433,7 +433,7 @@ describe('McpConnectionManager', () => {
       const entry = cm.get('notion');
       expect(entry).toMatchObject({
         status: 'needs-auth',
-        error: expect.stringContaining('闇€瑕?OAuth 璁よ瘉'),
+        error: expect.stringContaining('需要 OAuth 认证'),
       });
       expect(entry?.error).not.toContain('redirectUrl must be set');
     } finally {

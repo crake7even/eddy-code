@@ -1,4 +1,4 @@
-﻿import type { ChatProvider } from '../provider';
+import type { ChatProvider } from '../provider';
 import { AnthropicChatProvider, type AnthropicOptions } from './anthropic';
 import { GoogleGenAIChatProvider, type GoogleGenAIOptions } from './google-genai';
 import { EddyChatProvider, type EddyOptions } from './eddy';

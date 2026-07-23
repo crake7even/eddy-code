@@ -1,4 +1,4 @@
-﻿import { describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
 
 import type { Agent } from '../../../src/agent';
 import type { PromptOrigin } from '../../../src/agent/context';
