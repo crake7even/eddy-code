@@ -2,6 +2,10 @@ import process from "node:process";
 const { stdout, stdin } = process;
 
 import type { ResolvedTheme } from "#/tui/theme/colors";
+import {
+  CLEAR_SCREEN,
+  CLEAR_SCREEN_AND_SCROLLBACK,
+} from "#/tui/constant/terminal";
 
 const LOGO = [
   '███████╗██████╗ ██████╗ ██╗   ██╗  ██████╗ ██████╗ ██████╗ ███████╗',
@@ -122,7 +126,7 @@ export function runLoadingAnimation(theme: ResolvedTheme = 'dark'): Promise<void
     if (process.platform !== 'win32') {
       stdout.write('\x1b[?1049h')
     }
-    stdout.write('\x1b[2J')
+    stdout.write(CLEAR_SCREEN)
     stdout.write('\x1b[?25l')
 
     const accent = THEME_ACCENT[theme]
@@ -182,12 +186,12 @@ export function runLoadingAnimation(theme: ResolvedTheme = 'dark'): Promise<void
         return
       }
       if ((key === '\r' || key === '\n') && phase === 'ready') {
-        cleanup()
+        cleanup({ clearStartupScrollback: true })
         resolve()
       }
     }
 
-    function cleanup() {
+    function cleanup(options: { clearStartupScrollback?: boolean } = {}) {
       clearInterval(timer)
       stdin.off('data', onData)
       process.off('SIGINT', interrupt)
@@ -196,8 +200,10 @@ export function runLoadingAnimation(theme: ResolvedTheme = 'dark'): Promise<void
       stdout.write('\x1b[?25h')
       if (process.platform !== 'win32') {
         stdout.write('\x1b[?1049l')
+      } else if (options.clearStartupScrollback === true) {
+        stdout.write(CLEAR_SCREEN_AND_SCROLLBACK)
       } else {
-        stdout.write('\x1b[2J\x1b[H')
+        stdout.write(CLEAR_SCREEN)
       }
     }
 

@@ -17,6 +17,9 @@ export const TERMINAL_FOCUS_OUT = `${ESC}[O`;
 export const ENABLE_TERMINAL_FOCUS_REPORTING = `${ESC}[?1004h`;
 export const DISABLE_TERMINAL_FOCUS_REPORTING = `${ESC}[?1004l`;
 
+export const CLEAR_SCREEN = `${ESC}[2J${ESC}[H`;
+export const CLEAR_SCREEN_AND_SCROLLBACK = `${ESC}[2J${ESC}[3J${ESC}[H`;
+
 // Standard OSC 11 background-color query. The response regex intentionally
 // allows a missing leading ESC because terminals can echo replies alongside
 // other raw input, but it requires an OSC terminator so fragmented color

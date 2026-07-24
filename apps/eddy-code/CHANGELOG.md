@@ -1,5 +1,11 @@
 # eddy-code
 
+## 0.6.6
+
+### Patch Changes
+
+- Fix Windows Terminal startup scrollback behavior. After launching Eddy Code, scrolling no longer reveals the PowerShell prompt and command output from before startup, while normal scrolling through Eddy Code's own terminal content remains available.
+
 ## 0.6.5
 
 ### Patch Changes

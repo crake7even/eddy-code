@@ -56,6 +56,10 @@ const mocks = vi.hoisted(() => {
 vi.mock('node:process', () => ({ default: mocks.process }));
 
 import { runLoadingAnimation } from '#/tui/components/chrome/loading';
+import {
+  CLEAR_SCREEN,
+  CLEAR_SCREEN_AND_SCROLLBACK,
+} from '#/tui/constant/terminal';
 
 describe('runLoadingAnimation', () => {
   beforeEach(() => {
@@ -64,6 +68,7 @@ describe('runLoadingAnimation', () => {
     mocks.processEvents.reset();
     mocks.stdin.setRawMode.mockClear();
     mocks.stdout.write.mockClear();
+    mocks.process.exit.mockClear();
     mocks.stdout.columns = 80;
     mocks.stdout.rows = 24;
   });
@@ -74,6 +79,9 @@ describe('runLoadingAnimation', () => {
 
   it('erases every row when repainting after a terminal resize', async () => {
     const loading = runLoadingAnimation();
+
+    expect(mocks.stdout.write).not.toHaveBeenCalledWith('\x1b[?1049h');
+    expect(mocks.stdout.write).toHaveBeenCalledWith(CLEAR_SCREEN);
 
     mocks.stdout.rows = 36;
     await vi.advanceTimersByTimeAsync(150);
@@ -86,5 +94,18 @@ describe('runLoadingAnimation', () => {
     await vi.advanceTimersByTimeAsync(1_350);
     mocks.stdin.emit('data', Buffer.from('\r'));
     await loading;
+
+    expect(mocks.stdout.write).toHaveBeenCalledWith(CLEAR_SCREEN_AND_SCROLLBACK);
+    expect(mocks.stdout.write).not.toHaveBeenCalledWith('\x1b[?1049l');
+  });
+
+  it('does not use alternate screen when interrupted during Windows loading', async () => {
+    runLoadingAnimation();
+
+    mocks.stdin.emit('data', Buffer.from('\x03'));
+
+    expect(mocks.stdout.write).not.toHaveBeenCalledWith('\x1b[?1049h');
+    expect(mocks.stdout.write).not.toHaveBeenCalledWith('\x1b[?1049l');
+    expect(mocks.process.exit).toHaveBeenCalledWith(0);
   });
 });

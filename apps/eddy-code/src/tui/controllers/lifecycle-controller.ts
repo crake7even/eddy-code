@@ -14,6 +14,7 @@ import { checkCcConnectActive } from '../utils/cc-connect-status';
 import { isDeadTerminalError } from '../utils/dead-terminal';
 import { installTerminalFocusTracking } from '../utils/terminal-focus';
 import { installTerminalThemeTracking } from '../utils/terminal-theme';
+import { CLEAR_SCREEN } from '../constant/terminal';
 import { MoonLoader, type SpinnerStyle } from '../components/chrome/moon-loader';
 import { PulseWaveLoader } from '../components/chrome/pulse-wave-loader';
 import { ActivityPaneComponent, type ActivityPaneMode } from '../components/panes/activity-pane';
@@ -190,7 +191,7 @@ export class LifecycleController {
   }
 
   startEventLoop(): void {
-    this.host.state.terminal.write('\x1b[2J\x1b[H');
+    this.host.state.terminal.write(CLEAR_SCREEN);
     this.host.state.ui.start();
     this.host.state.ui.requestRender(true);
     this.terminalFocusTrackingDispose = installTerminalFocusTracking(this.host.state);
