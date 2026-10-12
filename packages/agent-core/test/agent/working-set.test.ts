@@ -5,6 +5,7 @@ import {
   type VerificationRecord,
   WorkingSet,
   looksLikeVerificationCommand,
+  requiresVerification,
 } from '../../src/agent/working-set.js';
 
 describe('WorkingSet', () => {
@@ -165,6 +166,13 @@ describe('WorkingSet', () => {
       expect(ws.getUnverifiedPaths()).toHaveLength(0);
     });
 
+    it('keeps paths verified when touched without needing verification', () => {
+      const ws = new WorkingSet();
+      ws.touch('README.md', 1, false);
+      expect(ws.getPaths()).toContain('README.md');
+      expect(ws.getUnverifiedPaths()).toHaveLength(0);
+    });
+
     it('marks all touched files as verified', () => {
       const ws = new WorkingSet();
       ws.touch('src/index.ts', 1);
@@ -186,6 +194,25 @@ describe('WorkingSet', () => {
       const ws = new WorkingSet();
       ws.markRead('package.json', 1);
       expect(ws.suggestVerificationCommands()).toHaveLength(0);
+    });
+  });
+
+  describe('requiresVerification', () => {
+    const root = '/work/project';
+
+    it('requires verification for source files inside the workspace', () => {
+      expect(requiresVerification('src/index.ts', root)).toBe(true);
+      expect(requiresVerification('/work/project/package.json', root)).toBe(true);
+    });
+
+    it('skips docs-like files', () => {
+      expect(requiresVerification('README.md', root)).toBe(false);
+      expect(requiresVerification('/work/project/docs/notes.TXT', root)).toBe(false);
+    });
+
+    it('skips files outside the workspace', () => {
+      expect(requiresVerification('/home/user/.eddy-code/config.toml', root)).toBe(false);
+      expect(requiresVerification('../other/src/index.ts', root)).toBe(false);
     });
   });
 

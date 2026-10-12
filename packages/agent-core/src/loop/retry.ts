@@ -1,6 +1,6 @@
 import { sleep } from '@antfu/utils';
 import * as retry from 'retry';
-import { APIContextOverflowError } from '@eddy-code/ltod';
+import { APIContextOverflowError } from '@eddy-code/yc';
 
 import type { Logger } from '#/logging/types';
 

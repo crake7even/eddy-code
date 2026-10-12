@@ -9,7 +9,7 @@ import {
   UNKNOWN_CAPABILITY,
   type Message,
   type ToolCall,
-} from '@eddy-code/ltod';
+} from '@eddy-code/yc';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import type { AgentOptions } from '../../src/agent';

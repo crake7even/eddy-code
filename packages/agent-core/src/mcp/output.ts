@@ -19,7 +19,7 @@
  * helpers stay private so callers cannot bypass the limits.
  */
 
-import type { ContentPart } from '@eddy-code/ltod';
+import type { ContentPart } from '@eddy-code/yc';
 
 import type { MCPContentBlock, MCPToolResult } from './types';
 

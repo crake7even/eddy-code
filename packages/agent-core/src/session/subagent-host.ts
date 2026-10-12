@@ -1,4 +1,4 @@
-import type { TokenUsage } from '@eddy-code/ltod';
+import type { TokenUsage } from '@eddy-code/yc';
 
 import type { Agent } from '../agent';
 import type { PromptOrigin } from '../agent/context';

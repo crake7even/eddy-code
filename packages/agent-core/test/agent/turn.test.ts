@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'pathe';
 import { setTimeout as delay } from 'node:timers/promises';
 
-import type { Jian } from '@eddy-code/jian';
+import type { Jian } from '@eddy-code/jan';
 import {
   APIConnectionError,
   APIEmptyResponseError,
@@ -13,7 +13,7 @@ import {
   type ChatProvider,
   type ModelCapability,
   type ToolCall,
-} from '@eddy-code/ltod';
+} from '@eddy-code/yc';
 import { describe, expect, it, vi } from 'vitest';
 
 import { HookEngine } from '../../src/session/hooks';
@@ -424,6 +424,36 @@ describe('Agent turn flow', () => {
       'You have unverified changes in: src/foo.ts',
     );
     expect(JSON.stringify(ctx.agent.context.data().history)).toContain('convergence_gate');
+  });
+  it('does not demand verification after writing a docs file outside the workspace', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'eddy-docs-write-'));
+    const notesPath = join(dir, 'notes.md');
+    const ctx = testAgent();
+    ctx.configure({ tools: ['Write'] });
+    await ctx.rpc.setPermission({ mode: 'yolo' });
+
+    const writeCall: ToolCall = {
+      type: 'function',
+      id: 'call_write_notes',
+      name: 'Write',
+      arguments: JSON.stringify({ path: notesPath, content: '# Notes\n' }),
+    };
+    ctx.mockNextResponse({ type: 'text', text: 'Writing the notes file.' }, writeCall);
+    ctx.mockNextResponse({
+      type: 'text',
+      text: 'Created notes.md with a Notes heading; it is a docs file, so no verification ran.',
+    });
+
+    await ctx.rpc.prompt({ input: [{ type: 'text', text: 'Write my notes' }] });
+    // Writes outside the workspace still ask for approval in yolo mode.
+    await ctx.untilApproval(true);
+    await ctx.untilTurnEnd();
+
+    expect(existsSync(notesPath)).toBe(true);
+    expect(ctx.agent.workingSet.getPaths()).toContain(notesPath);
+    expect(JSON.stringify(ctx.agent.context.data().history)).not.toContain(
+      'You have unverified changes',
+    );
   });
   it('continues a turn when the final response is too brief after verification work', async () => {
     const ctx = testAgent();

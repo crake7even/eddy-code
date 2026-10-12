@@ -3,7 +3,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describe, expect, it, vi } from 'vitest';
 
-import { LocalJian } from '@eddy-code/jian';
+import { LocalJian } from '@eddy-code/jan';
 import type { Agent } from '../../src/agent';
 import type { ContextMessage } from '../../src/agent/context';
 import type { ExecutableTool } from '../../src/loop';

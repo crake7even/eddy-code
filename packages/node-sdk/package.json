@@ -42,8 +42,8 @@
   "devDependencies": {
     "@eddy-code/agent-core": "workspace:^",
     "@eddy-code/config": "workspace:^",
-    "@eddy-code/jian": "workspace:^",
-    "@eddy-code/ltod": "workspace:^",
+    "@eddy-code/jan": "workspace:^",
+    "@eddy-code/yc": "workspace:^",
     "@types/yazl": "^2.4.6"
   }
 }

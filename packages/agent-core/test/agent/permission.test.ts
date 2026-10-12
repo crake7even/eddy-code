@@ -1,5 +1,5 @@
-import type { Jian } from '@eddy-code/jian';
-import type { ToolCall } from '@eddy-code/ltod';
+import type { Jian } from '@eddy-code/jan';
+import type { ToolCall } from '@eddy-code/yc';
 import * as posixPath from 'node:path/posix';
 import { describe, expect, it, vi } from 'vitest';
 

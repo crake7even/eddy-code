@@ -26,7 +26,7 @@
 import type { Readable } from 'node:stream';
 import { StringDecoder } from 'node:string_decoder';
 
-import type { Jian, JianProcess } from '@eddy-code/jian';
+import type { Jian, JianProcess } from '@eddy-code/jan';
 import { z } from 'zod';
 
 import type { BuiltinTool } from '../../../agent/tool';

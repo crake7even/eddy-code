@@ -9,7 +9,7 @@
 
 import { randomUUID } from 'node:crypto';
 
-import type { TokenUsage } from '@eddy-code/ltod';
+import type { TokenUsage } from '@eddy-code/yc';
 import type { Logger } from '#/logging/types';
 
 import type { LoopEventDispatcher } from './events';

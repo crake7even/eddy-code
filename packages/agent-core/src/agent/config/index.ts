@@ -4,7 +4,7 @@ import {
   type ChatProvider,
   type ModelCapability,
   type ProviderConfig,
-} from '@eddy-code/ltod';
+} from '@eddy-code/yc';
 
 import type { Agent } from '..';
 import { ErrorCodes, EddyError } from '../../errors';

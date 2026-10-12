@@ -8,7 +8,7 @@
  * referenced.
  */
 
-import { inputTotal } from '@eddy-code/ltod';
+import { inputTotal } from '@eddy-code/yc';
 import { describe, expect, it } from 'vitest';
 
 import { ErrorCodes, EddyError } from '../../src/errors';

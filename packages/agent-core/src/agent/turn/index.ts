@@ -2,7 +2,7 @@ import {
   APIContextOverflowError,
   grandTotal as ltodGrandTotal,
   type ContentPart,
-} from '@eddy-code/ltod';
+} from '@eddy-code/yc';
 
 import type { Agent } from '..';
 import {
@@ -25,7 +25,7 @@ import type { AgentEvent, TurnEndedEvent } from '../../rpc';
 import { abortable, userCancellationReason } from '../../utils/abort';
 import { USER_PROMPT_ORIGIN, type PromptOrigin, type ContextMessage } from '../context';
 import { renderUserPromptHookBlockResult, renderUserPromptHookResult } from '../../session/hooks';
-import { looksLikeVerificationCommand } from '../working-set';
+import { looksLikeVerificationCommand, requiresVerification } from '../working-set';
 import { ToolCallDeduplicator } from './tool-dedup';
 
 interface ActiveTurn {
@@ -630,10 +630,8 @@ export class TurnFlow {
               ) {
                 this.summaryGuardInjected = true;
                 this.agent.context.appendSystemReminder(
-                  'Your final response is too brief or only acknowledges completion. ' +
-                    'Before ending the turn, provide a concise but complete summary: ' +
-                    'what was done, which files changed, the verification result, and any ' +
-                    'remaining work or blockers.',
+                  'Your final response is too brief. Before ending the turn, state the result ' +
+                    'in one or two plain sentences: what changed and whether it was verified.',
                   { kind: 'system_trigger', name: 'convergence_gate' },
                 );
                 return { continue: true };
@@ -865,7 +863,9 @@ export class TurnFlow {
     }
     if (toolName === 'Edit' || toolName === 'Write') {
       const path = (args as { path?: string }).path;
-      if (path !== undefined) workingSet.touch(path, turnId);
+      if (path !== undefined) {
+        workingSet.touch(path, turnId, requiresVerification(path, this.agent.config.cwd));
+      }
     }
   }
 

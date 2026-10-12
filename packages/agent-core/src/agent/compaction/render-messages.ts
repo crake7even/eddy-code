@@ -1,4 +1,4 @@
-import type { Message } from '@eddy-code/ltod';
+import type { Message } from '@eddy-code/yc';
 
 export function renderMessagesToText(messages: readonly Message[]): string {
   return messages.map((message, index) => renderMessageToText(message, index)).join('\n\n');

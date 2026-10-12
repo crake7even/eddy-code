@@ -1,4 +1,4 @@
-import { createToolMessage, type ContentPart, type Message } from '@eddy-code/ltod';
+import { createToolMessage, type ContentPart, type Message } from '@eddy-code/yc';
 
 import type { Agent } from '..';
 import type { ExecutableToolResult, LoopRecordedEvent } from '../../loop';

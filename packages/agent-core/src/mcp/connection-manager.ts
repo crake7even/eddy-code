@@ -2,7 +2,7 @@ import { ErrorCodes, EddyError } from '#/errors';
 import type { McpServerConfig } from '#/config/schema';
 import { log as defaultLog } from '#/logging/logger';
 import type { Logger } from '#/logging/types';
-import type { Tool } from '@eddy-code/ltod';
+import type { Tool } from '@eddy-code/yc';
 
 import { abortable } from '../utils/abort';
 import { HttpMcpClient } from './client-http';

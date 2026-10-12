@@ -29,6 +29,6 @@
     "zod": "catalog:"
   },
   "devDependencies": {
-    "@eddy-code/jian": "workspace:^"
+    "@eddy-code/jan": "workspace:^"
   }
 }

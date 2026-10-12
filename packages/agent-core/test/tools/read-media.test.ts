@@ -2,8 +2,8 @@
  * ReadMediaFileTool tests for the current output/capability contract.
  */
 
-import type { Jian } from '@eddy-code/jian';
-import type { ContentPart, ModelCapability } from '@eddy-code/ltod';
+import type { Jian } from '@eddy-code/jan';
+import type { ContentPart, ModelCapability } from '@eddy-code/yc';
 import { describe, expect, it, vi } from 'vitest';
 
 import { ToolAccesses } from '../../src/loop';

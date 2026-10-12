@@ -1,6 +1,6 @@
 import { homedir } from 'node:os';
 import { join } from 'pathe';
-import type { Jian } from '@eddy-code/jian';
+import type { Jian } from '@eddy-code/jan';
 
 import { ErrorCodes, EddyError } from '#/errors';
 import { getRootLogger, log } from '#/logging/logger';

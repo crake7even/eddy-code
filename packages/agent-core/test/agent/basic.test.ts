@@ -1,4 +1,4 @@
-import type { ToolCall } from '@eddy-code/ltod';
+import type { ToolCall } from '@eddy-code/yc';
 import { expect, it } from 'vitest';
 
 import { createCommandJian, testAgent } from './harness/agent';

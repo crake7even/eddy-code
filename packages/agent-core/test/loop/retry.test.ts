@@ -1,4 +1,4 @@
-import { APIConnectionError, emptyUsage, isRetryableGenerateError } from '@eddy-code/ltod';
+import { APIConnectionError, emptyUsage, isRetryableGenerateError } from '@eddy-code/yc';
 import { describe, expect, it } from 'vitest';
 
 import type { LLM, LLMChatParams, LLMChatResponse } from '#/loop/llm';

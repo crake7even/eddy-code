@@ -1,6 +1,6 @@
 import { PassThrough, Readable, type Writable } from 'node:stream';
 
-import type { Environment, JianProcess } from '@eddy-code/jian';
+import type { Environment, JianProcess } from '@eddy-code/jan';
 import { describe, expect, it, vi } from 'vitest';
 
 import { BackgroundProcessManager } from '../../src/tools/background/manager';

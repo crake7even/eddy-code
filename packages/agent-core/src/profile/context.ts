@@ -1,6 +1,6 @@
 import { dirname, join } from 'pathe';
 
-import type { Jian } from '@eddy-code/jian';
+import type { Jian } from '@eddy-code/jan';
 
 import { listDirectory } from '../tools/support/list-directory';
 import type { SystemPromptContext } from './types';

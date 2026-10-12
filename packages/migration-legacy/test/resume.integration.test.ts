@@ -19,7 +19,7 @@
  *   - `encodeWorkDirKey` / `normalizeWorkDir`
  *     all from `@eddy-code/agent-core/session/store`.
  *   - `Session` (constructor + `resume()` + `agents` map), from
- *     `@eddy-code/agent-core`; `localJian` from `@eddy-code/jian`. After
+ *     `@eddy-code/agent-core`; `localJian` from `@eddy-code/jan`. After
  *     `resume()`, `session.agents.get('main').context.messages` exposes the
  *     replayed message history.
  */
@@ -35,7 +35,7 @@ import {
   normalizeWorkDir,
 } from '@eddy-code/agent-core/session/store';
 import { Session, type SDKSessionRPC } from '@eddy-code/agent-core';
-import { LocalJian } from '@eddy-code/jian';
+import { LocalJian } from '@eddy-code/jan';
 
 import { migrateOneSession, type MigrateOneResult } from '../src/sessions/migrate-one.js';
 import { computeWorkdirBucket } from '../src/sessions/workdir-bucket.js';

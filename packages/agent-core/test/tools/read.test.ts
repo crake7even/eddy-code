@@ -1,4 +1,4 @@
-import type { Jian } from '@eddy-code/jian';
+import type { Jian } from '@eddy-code/jan';
 import { describe, expect, it, vi } from 'vitest';
 
 import {

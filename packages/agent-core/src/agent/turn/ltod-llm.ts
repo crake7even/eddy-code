@@ -25,7 +25,7 @@ import {
   type Message,
   type ModelCapability,
   type StreamedMessagePart,
-} from '@eddy-code/ltod';
+} from '@eddy-code/yc';
 
 import type {
   LLM,

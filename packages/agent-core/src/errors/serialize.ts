@@ -3,7 +3,7 @@ import {
   APIStatusError,
   APITimeoutError,
   ChatProviderError,
-} from '@eddy-code/ltod';
+} from '@eddy-code/yc';
 
 import { EddyError } from './classes';
 import { ErrorCodes, EDDY_ERROR_INFO, type EddyErrorCode } from './codes';

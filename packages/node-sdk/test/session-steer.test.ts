@@ -1,4 +1,4 @@
-import type * as LtodModule from '@eddy-code/ltod';
+import type * as LtodModule from '@eddy-code/yc';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { EddyError } from '#/index';
@@ -10,7 +10,7 @@ const fakeProviderState = vi.hoisted(() => ({
   responseText: 'steer response',
 }));
 
-vi.mock('@eddy-code/ltod', async (importOriginal) => {
+vi.mock('@eddy-code/yc', async (importOriginal) => {
   const actual = await importOriginal<typeof LtodModule>();
   return {
     ...actual,

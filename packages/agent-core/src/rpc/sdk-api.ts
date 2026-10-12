@@ -1,4 +1,4 @@
-import type { ContentPart } from '@eddy-code/ltod';
+import type { ContentPart } from '@eddy-code/yc';
 
 import type { RPCMethods } from './client';
 import type { AgentEvent, ToolInputDisplay } from './events';

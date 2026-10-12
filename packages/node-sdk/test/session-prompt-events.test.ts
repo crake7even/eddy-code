@@ -5,7 +5,7 @@ import { join } from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
 
 import { EDDY_CODE_PLATFORM } from '@eddy-code/config';
-import type * as LtodModule from '@eddy-code/ltod';
+import type * as LtodModule from '@eddy-code/yc';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { Event } from '#/index';
@@ -21,7 +21,7 @@ const fakeProviderState = vi.hoisted(() => ({
   responseText: 'hello from fake provider',
 }));
 
-vi.mock('@eddy-code/ltod', async (importOriginal) => {
+vi.mock('@eddy-code/yc', async (importOriginal) => {
   const actual = await importOriginal<typeof LtodModule>();
   return {
     ...actual,

@@ -127,20 +127,51 @@ importers:
         specifier: ^4.21.0
         version: 4.22.3
 
+  packages/JAN:
+    dependencies:
+      pathe:
+        specifier: ^2.0.3
+        version: 2.0.3
+
+  packages/Yc:
+    dependencies:
+      '@anthropic-ai/sdk':
+        specifier: ^0.95.2
+        version: 0.95.2(zod@4.4.3)
+      '@google/genai':
+        specifier: ^1.49.0
+        version: 1.52.0(@modelcontextprotocol/sdk@1.29.0(zod@4.4.3))
+      openai:
+        specifier: ^6.34.0
+        version: 6.39.1(ws@8.21.0)(zod@4.4.3)
+      zod:
+        specifier: 'catalog:'
+        version: 4.4.3
+      zod-to-json-schema:
+        specifier: ^3.25.2
+        version: 3.25.2(zod@4.4.3)
+    devDependencies:
+      ajv:
+        specifier: ^8.18.0
+        version: 8.20.0
+      ajv-formats:
+        specifier: ^3.0.1
+        version: 3.0.1(ajv@8.20.0)
+
   packages/agent-core:
     dependencies:
       '@antfu/utils':
         specifier: ^9.3.0
         version: 9.3.0
-      '@eddy-code/jian':
+      '@eddy-code/jan':
         specifier: workspace:^
-        version: link:../jian
-      '@eddy-code/ltod':
-        specifier: workspace:^
-        version: link:../ltod
+        version: link:../JAN
       '@eddy-code/memory':
         specifier: workspace:*
         version: link:../memory
+      '@eddy-code/yc':
+        specifier: workspace:^
+        version: link:../Yc
       '@modelcontextprotocol/sdk':
         specifier: ^1.29.0
         version: 1.29.0(zod@4.4.3)
@@ -226,37 +257,6 @@ importers:
 
   packages/config: {}
 
-  packages/jian:
-    dependencies:
-      pathe:
-        specifier: ^2.0.3
-        version: 2.0.3
-
-  packages/ltod:
-    dependencies:
-      '@anthropic-ai/sdk':
-        specifier: ^0.95.2
-        version: 0.95.2(zod@4.4.3)
-      '@google/genai':
-        specifier: ^1.49.0
-        version: 1.52.0(@modelcontextprotocol/sdk@1.29.0(zod@4.4.3))
-      openai:
-        specifier: ^6.34.0
-        version: 6.39.1(ws@8.21.0)(zod@4.4.3)
-      zod:
-        specifier: 'catalog:'
-        version: 4.4.3
-      zod-to-json-schema:
-        specifier: ^3.25.2
-        version: 3.25.2(zod@4.4.3)
-    devDependencies:
-      ajv:
-        specifier: ^8.18.0
-        version: 8.20.0
-      ajv-formats:
-        specifier: ^3.0.1
-        version: 3.0.1(ajv@8.20.0)
-
   packages/memory:
     dependencies:
       fastembed:
@@ -278,9 +278,9 @@ importers:
         specifier: 'catalog:'
         version: 4.4.3
     devDependencies:
-      '@eddy-code/jian':
+      '@eddy-code/jan':
         specifier: workspace:^
-        version: link:../jian
+        version: link:../JAN
 
   packages/node-sdk:
     dependencies:
@@ -303,12 +303,12 @@ importers:
       '@eddy-code/config':
         specifier: workspace:^
         version: link:../config
-      '@eddy-code/jian':
+      '@eddy-code/jan':
         specifier: workspace:^
-        version: link:../jian
-      '@eddy-code/ltod':
+        version: link:../JAN
+      '@eddy-code/yc':
         specifier: workspace:^
-        version: link:../ltod
+        version: link:../Yc
       '@types/yazl':
         specifier: ^2.4.6
         version: 2.4.6

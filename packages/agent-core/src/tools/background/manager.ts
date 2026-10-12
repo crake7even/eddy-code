@@ -14,7 +14,7 @@
 
 import { randomBytes } from 'node:crypto';
 
-import type { JianProcess } from '@eddy-code/jian';
+import type { JianProcess } from '@eddy-code/jan';
 
 import { isAbortError } from '../../loop/errors';
 import {

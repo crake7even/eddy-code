@@ -1,5 +1,5 @@
 import type { UsageStatus } from '#/rpc';
-import { addUsage, type TokenUsage } from '@eddy-code/ltod';
+import { addUsage, type TokenUsage } from '@eddy-code/yc';
 
 import type { Agent } from '..';
 

@@ -1,4 +1,4 @@
-import type { Message } from '@eddy-code/ltod';
+import type { Message } from '@eddy-code/yc';
 import { describe, expect, it } from 'vitest';
 
 import { renderNotificationXml } from '../../src/agent/context/notification-xml';

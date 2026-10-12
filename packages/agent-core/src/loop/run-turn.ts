@@ -6,7 +6,7 @@
  * and final `TurnResult` mapping. One-step execution lives in `turn-step.ts`.
  */
 
-import { addUsage, emptyUsage, type TokenUsage } from '@eddy-code/ltod';
+import { addUsage, emptyUsage, type TokenUsage } from '@eddy-code/yc';
 
 import type { Logger } from '#/logging/types';
 

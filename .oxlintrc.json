@@ -92,7 +92,7 @@
       }
     },
     {
-      "files": ["packages/ltod/src/providers/**/*.ts"],
+      "files": ["packages/Yc/src/providers/**/*.ts"],
       "rules": {
         "typescript/no-unsafe-argument": "off",
         "typescript/no-unsafe-assignment": "off",

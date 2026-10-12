@@ -5,7 +5,7 @@ import {
   type TextPart,
   type ThinkPart,
   type TokenUsage,
-} from '@eddy-code/ltod';
+} from '@eddy-code/yc';
 
 import type {
   LLM,

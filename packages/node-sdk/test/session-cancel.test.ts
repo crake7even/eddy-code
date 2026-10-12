@@ -1,7 +1,7 @@
 import { writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 
-import type * as LtodModule from '@eddy-code/ltod';
+import type * as LtodModule from '@eddy-code/yc';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import type { EddyError, Event } from '#/index';
@@ -9,7 +9,7 @@ import type { EddyError, Event } from '#/index';
 import { makeTempDir, removeTempDirs, waitForSDKEvent } from './session-runtime-helpers';
 import { TEST_IDENTITY } from './test-identity';
 
-vi.mock('@eddy-code/ltod', async (importOriginal) => {
+vi.mock('@eddy-code/yc', async (importOriginal) => {
   const actual = await importOriginal<typeof LtodModule>();
   return {
     ...actual,

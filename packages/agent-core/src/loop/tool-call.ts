@@ -13,7 +13,7 @@
  * should be reviewed together.
  */
 
-import type { ContentPart } from '@eddy-code/ltod';
+import type { ContentPart } from '@eddy-code/yc';
 
 import type { Logger } from '#/logging/types';
 import {

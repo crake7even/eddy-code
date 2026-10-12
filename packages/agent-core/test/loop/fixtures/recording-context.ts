@@ -1,4 +1,4 @@
-import type { Message } from '@eddy-code/ltod';
+import type { Message } from '@eddy-code/yc';
 
 import type {
   LoopContentPartEvent,

@@ -3,7 +3,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'pathe';
 
 import { testJian } from '../fixtures/test-jian';
-import type { ToolCall } from '@eddy-code/ltod';
+import type { ToolCall } from '@eddy-code/yc';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import type { Agent } from '../../src/agent';

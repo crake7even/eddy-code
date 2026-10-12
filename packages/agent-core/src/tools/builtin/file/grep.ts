@@ -19,7 +19,7 @@
 
 import type { Readable } from 'node:stream';
 
-import type { Jian, JianProcess } from '@eddy-code/jian';
+import type { Jian, JianProcess } from '@eddy-code/jan';
 import { normalize } from 'pathe';
 import { z } from 'zod';
 

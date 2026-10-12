@@ -1,6 +1,6 @@
 import { Readable, type Writable } from 'node:stream';
 
-import type { JianProcess, StatResult } from '@eddy-code/jian';
+import type { JianProcess, StatResult } from '@eddy-code/jan';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { type GrepInput, GrepInputSchema, GrepTool } from '../../src/tools/builtin/file/grep';

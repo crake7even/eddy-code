@@ -15,7 +15,7 @@ import { join } from 'pathe';
 import { Readable } from 'node:stream';
 import type { Writable } from 'node:stream';
 
-import type { JianProcess } from '@eddy-code/jian';
+import type { JianProcess } from '@eddy-code/jan';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { BackgroundProcessManager } from '../../../src/tools/background/manager';

@@ -2,7 +2,8 @@ import { defineConfig } from 'vitest/config';
 
 export default defineConfig({
   test: {
-    name: 'ltod',
+    name: 'JAN',
     include: ['test/**/*.test.ts'],
+    setupFiles: ['./test/setup.ts'],
   },
 });

@@ -5,7 +5,7 @@
 
 import { dirname, isAbsolute, join, normalize } from 'pathe';
 
-import type { Jian } from '@eddy-code/jian';
+import type { Jian } from '@eddy-code/jan';
 
 const S_IFMT = 0o170000;
 const S_IFDIR = 0o040000;

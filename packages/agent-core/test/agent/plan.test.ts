@@ -1,4 +1,4 @@
-import type { ToolCall } from '@eddy-code/ltod';
+import type { ToolCall } from '@eddy-code/yc';
 import { describe, expect, it, vi } from 'vitest';
 
 import { createFakeJian } from '../tools/fixtures/fake-jian';

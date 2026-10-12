@@ -11,7 +11,7 @@
  * their own `WorkspaceConfig` with narrower bounds.
  */
 
-import type { Environment, Jian } from '@eddy-code/jian';
+import type { Environment, Jian } from '@eddy-code/jan';
 import type { ExecutableToolResult } from '#/loop';
 
 import type { WorkspaceConfig } from '../../../src/tools/support/workspace';

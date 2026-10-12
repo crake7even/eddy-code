@@ -1,5 +1,8 @@
+import path from 'node:path';
+
 const DECAY_TURNS = 10;
 const VERIFICATION_DEDUP_MS = 60_000;
+const NON_CODE_EXTENSIONS = new Set(['.md', '.mdx', '.markdown', '.txt', '.rst', '.log']);
 
 type ProjectKind = 'node' | 'rust' | 'python' | 'go' | 'unknown';
 
@@ -211,7 +214,7 @@ export class WorkingSet {
   }
 
 
-  touch(path: string, turn: number): void {
+  touch(path: string, turn: number, needsVerification = true): void {
     if (path.length === 0) return;
     const normalized = path.replaceAll('\\', '/');
     const existing = this.entries.get(normalized);
@@ -219,7 +222,7 @@ export class WorkingSet {
       path: normalized,
       lastTurn: turn,
       lastReadTurn: existing?.lastReadTurn,
-      verified: false,
+      verified: !needsVerification,
     });
   }
 
@@ -341,6 +344,18 @@ const VERIFICATION_PATTERNS = [
 
 export function looksLikeVerificationCommand(command: string): boolean {
   return VERIFICATION_PATTERNS.some((pattern) => pattern.test(command));
+}
+
+/**
+ * Whether writing `filePath` should require a build/test/lint pass before the
+ * turn may end. Docs-like files and anything outside the workspace (e.g. user
+ * config under the home directory, scratch files in /tmp) cannot be checked by
+ * the project's verification commands, so they never block completion.
+ */
+export function requiresVerification(filePath: string, workspaceRoot: string): boolean {
+  const relative = path.relative(workspaceRoot, path.resolve(workspaceRoot, filePath));
+  if (relative.startsWith('..') || path.isAbsolute(relative)) return false;
+  return !NON_CODE_EXTENSIONS.has(path.extname(filePath).toLowerCase());
 }
 
 export { DECAY_TURNS, VERIFICATION_COMMANDS };

@@ -15,13 +15,13 @@
  * Read/Write/Edit.
  */
 
-import type { Jian } from '@eddy-code/jian';
+import type { Jian } from '@eddy-code/jan';
 import type {
   ContentPart,
   ModelCapability,
   VideoURLPart,
   VideoUploadInput as ProviderVideoUploadInput,
-} from '@eddy-code/ltod';
+} from '@eddy-code/yc';
 import { z } from 'zod';
 
 import type { BuiltinTool } from '../../../agent/tool';

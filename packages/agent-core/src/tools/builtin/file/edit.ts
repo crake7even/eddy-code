@@ -8,7 +8,7 @@
  * Jian I/O.
  */
 
-import type { Jian } from '@eddy-code/jian';
+import type { Jian } from '@eddy-code/jan';
 import { z } from 'zod';
 
 import type { BuiltinTool } from '../../../agent/tool';

@@ -21,9 +21,9 @@ export default defineConfig({
   },
   alias: {
     '@eddy-code/agent-core': fileURLToPath(new URL('../agent-core/src/index.ts', import.meta.url)),
-    '@eddy-code/jian': fileURLToPath(new URL('../jian/src/index.ts', import.meta.url)),
+    '@eddy-code/jan': fileURLToPath(new URL('../JAN/src/index.ts', import.meta.url)),
     '@eddy-code/config': fileURLToPath(new URL('../config/src/index.ts', import.meta.url)),
-    '@eddy-code/ltod': fileURLToPath(new URL('../ltod/src/index.ts', import.meta.url)),
+    '@eddy-code/yc': fileURLToPath(new URL('../Yc/src/index.ts', import.meta.url)),
   },
   deps: {
     alwaysBundle: [/^@eddy-./],

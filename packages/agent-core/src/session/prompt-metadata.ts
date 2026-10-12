@@ -1,5 +1,5 @@
 import type { ActivateSkillPayload, PromptPayload } from '#/rpc';
-import type { ContentPart } from '@eddy-code/ltod';
+import type { ContentPart } from '@eddy-code/yc';
 
 const MAX_TITLE_LENGTH = 200;
 const MAX_LAST_PROMPT_LENGTH = 4000;

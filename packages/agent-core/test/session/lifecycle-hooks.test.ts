@@ -4,7 +4,7 @@ import { join } from 'pathe';
 import { Readable } from 'node:stream';
 import type { Writable } from 'node:stream';
 
-import type { JianProcess } from '@eddy-code/jian';
+import type { JianProcess } from '@eddy-code/jan';
 
 import { testJian } from '../fixtures/test-jian';
 import { afterEach, describe, expect, it, vi } from 'vitest';

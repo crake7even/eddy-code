@@ -1,4 +1,4 @@
-import type { ContentPart, Message, Tool } from '@eddy-code/ltod';
+import type { ContentPart, Message, Tool } from '@eddy-code/yc';
 
 /**
  * Estimate token count from text using a character-based heuristic.

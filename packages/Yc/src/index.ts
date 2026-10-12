@@ -77,6 +77,6 @@ export type { ToolCallIdPolicy } from './providers/tool-call-id';
 /**
  * Concrete provider adapters stay off the root barrel because their SDK type
  * graphs pollute downstream declaration bundles. Import them from subpaths:
- * `@eddy-code/ltod/providers/eddy`,
- * `@eddy-code/ltod/providers/openai-legacy`, etc.
+ * `@eddy-code/yc/providers/eddy`,
+ * `@eddy-code/yc/providers/openai-legacy`, etc.
  */

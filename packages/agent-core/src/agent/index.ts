@@ -11,7 +11,7 @@ import {
   type ChatProvider,
   type Message,
   type Tool,
-} from '@eddy-code/ltod';
+} from '@eddy-code/yc';
 
 import type { EnabledPluginSessionStart } from '#/plugin';
 
@@ -58,7 +58,7 @@ import {
 } from './turn/ltod-llm';
 import { UsageRecorder } from './usage';
 import { resolveCompletionBudget } from '../utils/completion-budget';
-import type { Jian } from '@eddy-code/jian';
+import type { Jian } from '@eddy-code/jan';
 import type { ToolServices } from '../tools/support/services';
 
 export type { AgentRecord, AgentRecordPersistence } from './records';

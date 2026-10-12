@@ -1,4 +1,4 @@
-import type { FinishReason, TokenUsage } from '@eddy-code/ltod';
+import type { FinishReason, TokenUsage } from '@eddy-code/yc';
 
 import type { PromptOrigin } from '../agent/context';
 import type { GoalChange, GoalSnapshot } from '../agent/goal';

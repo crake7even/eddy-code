@@ -1,4 +1,4 @@
-import type { ContentPart } from '@eddy-code/ltod';
+import type { ContentPart } from '@eddy-code/yc';
 
 import type { Agent } from '../..';
 import {

@@ -2,8 +2,8 @@ import { EventEmitter } from 'node:events';
 import { Readable, type Writable } from 'node:stream';
 
 import { createControlledPromise } from '@antfu/utils';
-import { type Environment, type Jian, type JianProcess } from '@eddy-code/jian';
-import type { ModelCapability, ProviderConfig } from '@eddy-code/ltod';
+import { type Environment, type Jian, type JianProcess } from '@eddy-code/jan';
+import type { ModelCapability, ProviderConfig } from '@eddy-code/yc';
 import { expect, onTestFinished, vi } from 'vitest';
 
 import {

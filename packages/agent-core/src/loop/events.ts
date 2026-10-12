@@ -1,4 +1,4 @@
-import type { FinishReason, TextPart, ThinkPart, TokenUsage } from '@eddy-code/ltod';
+import type { FinishReason, TextPart, ThinkPart, TokenUsage } from '@eddy-code/yc';
 
 import type { ToolInputDisplay } from '../tools/display';
 import type { ExecutableToolResult, LoopStepStopReason, ToolUpdate } from './types';

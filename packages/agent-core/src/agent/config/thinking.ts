@@ -1,4 +1,4 @@
-import type { ThinkingEffort } from '@eddy-code/ltod';
+import type { ThinkingEffort } from '@eddy-code/yc';
 
 import type { ThinkingConfig } from '../../config/schema';
 

@@ -44,9 +44,9 @@
   },
   "dependencies": {
     "@antfu/utils": "^9.3.0",
-    "@eddy-code/jian": "workspace:^",
-    "@eddy-code/ltod": "workspace:^",
+    "@eddy-code/jan": "workspace:^",
     "@eddy-code/memory": "workspace:*",
+    "@eddy-code/yc": "workspace:^",
     "@modelcontextprotocol/sdk": "^1.29.0",
     "@mozilla/readability": "^0.6.0",
     "ajv": "^8.18.0",

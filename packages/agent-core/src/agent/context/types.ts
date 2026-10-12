@@ -1,4 +1,4 @@
-import type { ContentPart, Message } from '@eddy-code/ltod';
+import type { ContentPart, Message } from '@eddy-code/yc';
 
 import type { SkillSource } from '../../skill';
 import type { BackgroundTaskStatus } from '../../tools/background';

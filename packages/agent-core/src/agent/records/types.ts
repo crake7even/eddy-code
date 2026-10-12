@@ -1,4 +1,4 @@
-import type { ContentPart, TokenUsage } from '@eddy-code/ltod';
+import type { ContentPart, TokenUsage } from '@eddy-code/yc';
 
 import type { LoopRecordedEvent } from '../../loop';
 import type { ToolStoreUpdate } from '../../tools/store';

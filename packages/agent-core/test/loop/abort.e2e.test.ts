@@ -7,7 +7,7 @@
  * the LLM call, during tool execution, between steps, and during a hook.
  */
 
-import { inputTotal } from '@eddy-code/ltod';
+import { inputTotal } from '@eddy-code/yc';
 import { describe, expect, it } from 'vitest';
 
 import type { LLMChatResponse, LoopHooks } from '../../src/loop/index';

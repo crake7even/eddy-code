@@ -1,4 +1,4 @@
-import type { ModelCapability, ProviderConfig, ToolCall } from '@eddy-code/ltod';
+import type { ModelCapability, ProviderConfig, ToolCall } from '@eddy-code/yc';
 import { describe, expect, it } from 'vitest';
 
 import type { ResolvedAgentProfile } from '../../src/profile';

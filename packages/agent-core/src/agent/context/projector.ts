@@ -1,4 +1,4 @@
-import type { ContentPart, Message, TextPart } from '@eddy-code/ltod';
+import type { ContentPart, Message, TextPart } from '@eddy-code/yc';
 
 import type { ContextMessage } from './types';
 

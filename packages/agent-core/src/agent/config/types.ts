@@ -1,4 +1,4 @@
-import type { ModelCapability, ProviderConfig } from '@eddy-code/ltod';
+import type { ModelCapability, ProviderConfig } from '@eddy-code/yc';
 
 export interface AgentConfigData {
   cwd: string;

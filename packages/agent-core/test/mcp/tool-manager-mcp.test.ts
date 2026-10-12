@@ -1,4 +1,4 @@
-import type { ContentPart, Tool } from '@eddy-code/ltod';
+import type { ContentPart, Tool } from '@eddy-code/yc';
 import { describe, expect, it, vi } from 'vitest';
 
 import type { Agent } from '../../src/agent';

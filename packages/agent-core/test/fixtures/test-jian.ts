@@ -1,4 +1,4 @@
-import { LocalJian, type Environment } from '@eddy-code/jian';
+import { LocalJian, type Environment } from '@eddy-code/jan';
 
 export const TEST_OS_ENV: Environment = {
   osKind: 'Linux',

@@ -12,7 +12,7 @@ import {
   type Message,
   type TokenUsage,
   APIContextOverflowError,
-} from '@eddy-code/ltod';
+} from '@eddy-code/yc';
 
 import type { Agent } from '..';
 import { isAbortError } from '../../loop/errors';

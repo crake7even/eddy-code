@@ -6,7 +6,7 @@
  * inflating them through `testAgent()` would drag ltod / records / context
  * into every unit-level assertion.
  */
-import type { ContentPart } from '@eddy-code/ltod';
+import type { ContentPart } from '@eddy-code/yc';
 
 import type { Agent } from '../../../../src/agent';
 import type { PromptOrigin } from '../../../../src/agent/context/types';

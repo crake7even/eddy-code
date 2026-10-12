@@ -4,7 +4,7 @@ import type {
   ShellEnvironment,
 } from '@eddy-code/agent-core';
 import type { EddyHostIdentity } from '@eddy-code/config';
-import type { ContentPart } from '@eddy-code/ltod';
+import type { ContentPart } from '@eddy-code/yc';
 
 export type JsonPrimitive = string | number | boolean | null;
 export type JsonValue = JsonPrimitive | JsonValue[] | { readonly [key: string]: JsonValue };
@@ -49,7 +49,7 @@ export type {
 } from '@eddy-code/agent-core';
 
 export type { EddyHostIdentity } from '@eddy-code/config';
-export type { ContentPart, Role, ToolCall } from '@eddy-code/ltod';
+export type { ContentPart, Role, ToolCall } from '@eddy-code/yc';
 
 export type PermissionMode = 'yolo' | 'manual' | 'auto';
 

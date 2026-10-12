@@ -1,15 +1,15 @@
 {
-  "name": "@eddy-code/ltod",
+  "name": "@eddy-code/jan",
   "version": "0.6.3",
   "private": true,
-  "description": "The LLM abstraction layer for modern AI agent applications",
+  "description": "Execution environment abstraction for AI agent applications",
   "license": "MIT",
   "author": "YuZhao <crake7even@gmail.com>",
-  "homepage": "https://github.com/crake7even/eddy-code/tree/main/packages/ltod#readme",
+  "homepage": "https://github.com/crake7even/eddy-code/tree/main/packages/JAN#readme",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/crake7even/eddy-code.git",
-    "directory": "packages/ltod"
+    "directory": "packages/JAN"
   },
   "bugs": {
     "url": "https://github.com/crake7even/eddy-code/issues"
@@ -25,10 +25,6 @@
     ".": {
       "types": "./src/index.ts",
       "default": "./src/index.ts"
-    },
-    "./providers/*": {
-      "types": "./src/providers/*.ts",
-      "default": "./src/providers/*.ts"
     }
   },
   "scripts": {
@@ -37,14 +33,6 @@
     "clean": "rm -rf dist"
   },
   "dependencies": {
-    "@anthropic-ai/sdk": "^0.95.2",
-    "@google/genai": "^1.49.0",
-    "openai": "^6.34.0",
-    "zod": "catalog:",
-    "zod-to-json-schema": "^3.25.2"
-  },
-  "devDependencies": {
-    "ajv": "^8.18.0",
-    "ajv-formats": "^3.0.1"
+    "pathe": "^2.0.3"
   }
 }

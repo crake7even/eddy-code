@@ -14,7 +14,7 @@
 
 import { isAbsolute, join, normalize, resolve } from 'pathe';
 
-import type { Jian } from '@eddy-code/jian';
+import type { Jian } from '@eddy-code/jan';
 
 import type { WorkspaceConfig } from '../support/workspace';
 import { isSensitiveFile } from './sensitive';

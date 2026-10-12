@@ -4,7 +4,7 @@ import { dirname, join } from 'pathe';
 import { fileURLToPath } from 'node:url';
 
 import { testJian } from '../fixtures/test-jian';
-import type { ProviderConfig } from '@eddy-code/ltod';
+import type { ProviderConfig } from '@eddy-code/yc';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { ProviderManager } from '../../src/session/provider-manager';

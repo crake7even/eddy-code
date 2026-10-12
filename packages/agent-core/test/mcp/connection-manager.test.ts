@@ -5,7 +5,7 @@ import { setTimeout as sleep } from 'node:timers/promises';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
 import { testJian } from '../fixtures/test-jian';
-import type { ProviderConfig } from '@eddy-code/ltod';
+import type { ProviderConfig } from '@eddy-code/yc';
 import { describe, expect, it } from 'vitest';
 
 import { randomUUID } from 'node:crypto';

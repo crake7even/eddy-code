@@ -1,4 +1,4 @@
-import type { ChatProvider, ModelCapability } from '@eddy-code/ltod';
+import type { ChatProvider, ModelCapability } from '@eddy-code/yc';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import {

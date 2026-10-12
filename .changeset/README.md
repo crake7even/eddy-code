@@ -17,8 +17,8 @@ All other workspace packages are private internal packages, are not published to
 
 - `@eddy-code/agent-core`
 - `@eddy-code/oauth`
-- `@eddy-code/jian`
-- `@eddy-code/ltod`
+- `@eddy-code/jan`
+- `@eddy-code/yc`
 - `@eddy-code/vis`
 - `@eddy-code/vis-server`
 - `@eddy-code/vis-web`

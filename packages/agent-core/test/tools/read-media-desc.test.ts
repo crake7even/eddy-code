@@ -1,4 +1,4 @@
-import type { ModelCapability } from '@eddy-code/ltod';
+import type { ModelCapability } from '@eddy-code/yc';
 import { describe, expect, it } from 'vitest';
 
 import { ReadMediaFileTool } from '../../src/tools/builtin/file/read-media';

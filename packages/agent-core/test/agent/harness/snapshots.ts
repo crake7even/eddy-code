@@ -1,4 +1,4 @@
-import type { Message, Tool as LLMTool } from '@eddy-code/ltod';
+import type { Message, Tool as LLMTool } from '@eddy-code/yc';
 import { expect } from 'vitest';
 
 const IS_EVENT_ARRAY = Symbol('isEventArray');

@@ -1,4 +1,4 @@
-import type { ToolCall } from '@eddy-code/ltod';
+import type { ToolCall } from '@eddy-code/yc';
 import { describe, expect, it } from 'vitest';
 
 import type { PermissionPolicyContext } from '../../../src/agent/permission';

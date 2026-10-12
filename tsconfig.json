@@ -37,7 +37,7 @@
     "node_modules",
     "dist",
     "coverage",
-    "packages/ltod/test/type-safety-negative.ts",
+    "packages/Yc/test/type-safety-negative.ts",
     "**/*.disabled/**",
     "**/*.disabled"
   ]

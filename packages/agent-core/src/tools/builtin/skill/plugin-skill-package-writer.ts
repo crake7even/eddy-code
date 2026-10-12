@@ -1,6 +1,6 @@
 import { dirname, join, normalize } from 'pathe';
 
-import type { Jian } from '@eddy-code/jian';
+import type { Jian } from '@eddy-code/jan';
 
 import { ErrorCodes, EddyError } from '#/errors';
 import { PluginManager } from '#/plugin/manager';

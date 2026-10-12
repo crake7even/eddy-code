@@ -36,7 +36,7 @@
  * `task.recurring !== false` to keep that default behaviour even when
  * the field is omitted by the caller.
  */
-import type { ContentPart } from '@eddy-code/ltod';
+import type { ContentPart } from '@eddy-code/yc';
 
 import type { Agent } from '../index';
 import type { CronJobOrigin, CronMissedOrigin } from '../context/types';

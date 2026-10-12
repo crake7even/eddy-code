@@ -101,7 +101,7 @@ import type {
 import type { ResumedAgentState, ResumeSessionResult } from './resumed';
 import type { SDKRPC } from './sdk-api';
 import { proxyWithExtraPayload } from './types';
-import { JianShellNotFoundError, LocalJian, type Jian } from '@eddy-code/jian';
+import { JianShellNotFoundError, LocalJian, type Jian } from '@eddy-code/jan';
 import type { WebSearchProvider } from '../tools/builtin';
 import type { ToolServices } from '../tools/support/services';
 

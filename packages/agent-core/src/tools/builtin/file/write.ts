@@ -5,7 +5,7 @@
  * Path access policy is resolved before any Jian I/O.
  */
 
-import type { Jian } from '@eddy-code/jian';
+import type { Jian } from '@eddy-code/jan';
 import { dirname } from 'pathe';
 import { z } from 'zod';
 

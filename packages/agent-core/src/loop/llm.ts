@@ -15,7 +15,7 @@ import type {
   TokenUsage,
   Tool,
   ToolCall,
-} from '@eddy-code/ltod';
+} from '@eddy-code/yc';
 
 export interface ToolCallDelta {
   readonly toolCallId: string;

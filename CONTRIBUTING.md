@@ -26,6 +26,6 @@ pnpm test
 - `apps/vis`: Visual debugging tools
 - `packages/agent-core`: Agent engine
 - `packages/node-sdk`: Public TypeScript SDK
-- `packages/ltod`: LLM provider abstraction
-- `packages/jian`: Execution environment
+- `packages/Yc`: LLM provider abstraction
+- `packages/JAN`: Execution environment
 - `packages/oauth`: OAuth utilities

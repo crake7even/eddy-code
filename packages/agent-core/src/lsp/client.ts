@@ -1,4 +1,4 @@
-import type { Jian, JianProcess } from '@eddy-code/jian';
+import type { Jian, JianProcess } from '@eddy-code/jan';
 
 export interface LspLocation {
   readonly uri: string;

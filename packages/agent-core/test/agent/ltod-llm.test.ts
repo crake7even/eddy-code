@@ -4,7 +4,7 @@ import {
   type ModelCapability,
   type StreamedMessagePart,
   type ToolCall,
-} from '@eddy-code/ltod';
+} from '@eddy-code/yc';
 import { describe, expect, it } from 'vitest';
 
 import { LtodLLM, type GenerateFn } from '../../src/agent/turn/ltod-llm';

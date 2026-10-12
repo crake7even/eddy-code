@@ -11,6 +11,6 @@ export default defineConfig({
   plugins: [rawTextPlugin()],
   deps: {
     alwaysBundle: ['picomatch'],
-    neverBundle: ['@eddy-code/ltod', '@eddy-code/jian'],
+    neverBundle: ['@eddy-code/yc', '@eddy-code/jan'],
   },
 });

@@ -1,6 +1,6 @@
 import type { Logger } from '#/logging/types';
-import type { ProviderConfig as LtodProviderConfig, ModelCapability, ProviderRequestAuth } from '@eddy-code/ltod';
-import { APIStatusError, createProvider, UNKNOWN_CAPABILITY } from '@eddy-code/ltod';
+import type { ProviderConfig as LtodProviderConfig, ModelCapability, ProviderRequestAuth } from '@eddy-code/yc';
+import { APIStatusError, createProvider, UNKNOWN_CAPABILITY } from '@eddy-code/yc';
 import type { EddyConfig, ModelAlias, OAuthRef, ProviderConfig } from '../config';
 import { ErrorCodes, isEddyError, EddyError } from '../errors';
 

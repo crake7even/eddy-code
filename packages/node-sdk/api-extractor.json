@@ -3,8 +3,8 @@
   "mainEntryPointFilePath": "<projectFolder>/.tmp-api-extractor/dts/node-sdk/src/index.d.ts",
   "bundledPackages": [
     "@eddy-code/agent-core",
-    "@eddy-code/jian",
-    "@eddy-code/ltod"
+    "@eddy-code/jan",
+    "@eddy-code/yc"
   ],
   "compiler": {
     "tsconfigFilePath": "<projectFolder>/tsconfig.api-extractor.json",

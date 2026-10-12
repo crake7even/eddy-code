@@ -1,7 +1,7 @@
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 
-import type * as LtodModule from '@eddy-code/ltod';
+import type * as LtodModule from '@eddy-code/yc';
 import { afterEach, beforeEach, describe, expect, expectTypeOf, it, vi } from 'vitest';
 
 import type { Event, EddyError, SkillActivatedEvent, SkillSummary } from '#/index';
@@ -20,7 +20,7 @@ const fakeProviderState = vi.hoisted(() => ({
   responseText: 'skill response',
 }));
 
-vi.mock('@eddy-code/ltod', async (importOriginal) => {
+vi.mock('@eddy-code/yc', async (importOriginal) => {
   const actual = await importOriginal<typeof LtodModule>();
   return {
     ...actual,

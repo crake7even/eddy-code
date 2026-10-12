@@ -1,6 +1,6 @@
 import { Readable } from 'node:stream';
 
-import type { Jian, JianProcess } from '@eddy-code/jian';
+import type { Jian, JianProcess } from '@eddy-code/jan';
 import { describe, expect, it, vi } from 'vitest';
 
 import { collectGitContext, parseProjectName, sanitizeRemoteUrl } from '../../src/session/git-context';

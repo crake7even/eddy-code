@@ -7,7 +7,7 @@
 
 import { Readable, type Writable } from 'node:stream';
 
-import type { Jian, JianProcess } from '@eddy-code/jian';
+import type { Jian, JianProcess } from '@eddy-code/jan';
 import { describe, expect, it, vi } from 'vitest';
 
 import type { Agent } from '../../src/agent';

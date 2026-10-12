@@ -24,11 +24,11 @@
  *     (MAX_MATCHES × 2) on the raw yield stream is a secondary belt that
  *     still terminates the stream if the jian layer's own symlink-cycle
  *     detection were ever absent or bypassed. Primary cycle defense lives
- *     in `packages/jian/src/local.ts:_globWalk` via a path-local visited
+ *     in `packages/JAN/src/local.ts:_globWalk` via a path-local visited
  *     inode set.
  */
 
-import type { Jian } from '@eddy-code/jian';
+import type { Jian } from '@eddy-code/jan';
 import { normalize } from 'pathe';
 import { z } from 'zod';
 
@@ -78,7 +78,7 @@ export const WINDOWS_PATH_HINT =
   'returned in Windows backslash form; convert them to forward slashes before ' +
   'using them in a Bash command.';
 
-// POSIX mode bits — same constants used by JianPath.isDir (packages/jian/src/path.ts:199).
+// POSIX mode bits — same constants used by JianPath.isDir (packages/JAN/src/path.ts:199).
 const S_IFMT = 0o170000;
 const S_IFDIR = 0o040000;
 

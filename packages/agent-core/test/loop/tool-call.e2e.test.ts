@@ -8,7 +8,7 @@
  * while dispatching terminal events in provider order.
  */
 
-import type { ContentPart } from '@eddy-code/ltod';
+import type { ContentPart } from '@eddy-code/yc';
 import { describe, expect, it } from 'vitest';
 
 import { ToolAccesses } from '../../src/loop';

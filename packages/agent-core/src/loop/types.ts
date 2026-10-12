@@ -10,7 +10,7 @@
  * `exactOptionalPropertyTypes: true`.
  */
 
-import type { ContentPart, Message, TokenUsage, Tool, ToolCall } from '@eddy-code/ltod';
+import type { ContentPart, Message, TokenUsage, Tool, ToolCall } from '@eddy-code/yc';
 
 import type { ToolInputDisplay } from '../tools/display';
 import type { ToolAccesses } from './tool-access';

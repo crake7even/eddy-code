@@ -1,4 +1,4 @@
-import type { Environment } from '@eddy-code/jian';
+import type { Environment } from '@eddy-code/jan';
 import { z } from 'zod';
 
 import type { SkillRegistry } from '../skill';

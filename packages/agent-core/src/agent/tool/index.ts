@@ -1,5 +1,5 @@
 import { uniq } from '@antfu/utils';
-import type { ChatProvider, Tool } from '@eddy-code/ltod';
+import type { ChatProvider, Tool } from '@eddy-code/yc';
 import picomatch from 'picomatch';
 
 import type { Agent } from '..';

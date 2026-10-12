@@ -4,7 +4,7 @@ import {
   type FinishReason,
   type Message,
   type StreamedMessagePart,
-} from '@eddy-code/ltod';
+} from '@eddy-code/yc';
 
 import type { AgentOptions } from '../../../src/agent';
 import { estimateTokensForMessages } from '../../../src/utils/tokens';

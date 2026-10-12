@@ -1,4 +1,4 @@
-import type { ChatProvider, ModelCapability } from '@eddy-code/ltod';
+import type { ChatProvider, ModelCapability } from '@eddy-code/yc';
 
 /** Completion-token budget for the next LLM request. */
 export interface CompletionBudgetConfig {
