@@ -1,8 +1,8 @@
 diff --git a/dist/components/editor.js b/dist/components/editor.js
-index 50f92259fa88f4efe406a60b7db8e54a9eedace6..ebf0548c449fc40b1e91a277730a0241e5629850 100644
+index 50ca0f8c5778e92bfde51e1724c3da0e9326d4d1..a236e10b0d7c4c367d284d6a1b8d6680ba3d6b15 100644
 --- a/dist/components/editor.js
 +++ b/dist/components/editor.js
-@@ -487,6 +487,7 @@ export class Editor {
+@@ -489,6 +489,7 @@ export class Editor {
              }
              if (kb.matches(data, "tui.select.up") || kb.matches(data, "tui.select.down")) {
                  this.autocompleteList.handleInput(data);
@@ -10,16 +10,99 @@ index 50f92259fa88f4efe406a60b7db8e54a9eedace6..ebf0548c449fc40b1e91a277730a0241
                  return;
              }
              if (kb.matches(data, "tui.input.tab")) {
+diff --git a/dist/tui.d.ts b/dist/tui.d.ts
+index 0bd2845bd9caba12fb10efaed85eacd5008dc194..889fa2551c3983b4447e03ce07aa97f11d96fdb0 100644
+--- a/dist/tui.d.ts
++++ b/dist/tui.d.ts
+@@ -157,6 +157,7 @@ export declare class TUI extends Container {
+     private maxLinesRendered;
+     private previousViewportTop;
+     private fullRedrawCount;
++    private historyReplay;
+     private stopped;
+     private focusOrderCounter;
+     private overlayStack;
+@@ -201,6 +202,12 @@ export declare class TUI extends Container {
+     removeInputListener(listener: InputListener): void;
+     private queryCellSize;
+     stop(): void;
++    /**
++     * Force a full render that writes every line again instead of only the viewport.
++     * Use after replacing the whole transcript (e.g. resuming a session).
++     * @param clearScrollback also clear scrollback first, so the replayed lines are not duplicated
++     */
++    requestHistoryReplay(clearScrollback?: boolean): void;
+     requestRender(force?: boolean): void;
+     private scheduleRender;
+     private handleInput;
 diff --git a/dist/tui.js b/dist/tui.js
-index 8c0b7f5d36d4312f4c7c245a7e06d9ec87ac4f1a..6d7dd715fac4180b460ed93c6247b82b73403762 100644
+index b80ecfaaa512b54c599547d8b483da037570e8ca..a608a2534ccdf051f6e8b74e4dc44a0a778f308f 100644
 --- a/dist/tui.js
 +++ b/dist/tui.js
-@@ -905,7 +905,7 @@ export class TUI {
+@@ -114,6 +114,7 @@ export class TUI extends Container {
+     maxLinesRendered = 0; // Track terminal's working area (max lines ever rendered)
+     previousViewportTop = 0; // Track previous viewport top for resize-aware cursor moves
+     fullRedrawCount = 0;
++    historyReplay = "keep"; // First full render writes every line; later ones repaint the viewport only
+     stopped = false;
+     // Overlay stack for modal components rendered on top of base content
+     focusOrderCounter = 0;
+@@ -456,6 +457,15 @@ export class TUI extends Container {
+         this.terminal.showCursor();
+         this.terminal.stop();
+     }
++    /**
++     * Force a full render that writes every line again instead of only the viewport.
++     * Use after replacing the whole transcript (e.g. resuming a session).
++     * @param clearScrollback also clear scrollback first, so the replayed lines are not duplicated
++     */
++    requestHistoryReplay(clearScrollback = false) {
++        this.historyReplay = clearScrollback ? "clear" : "keep";
++        this.requestRender(true);
++    }
+     requestRender(force = false) {
+         if (force) {
+             this.previousLines = [];
+@@ -899,16 +909,38 @@ export class TUI extends Container {
+         // Extract cursor position before applying line resets (marker must be found first)
+         const cursorPos = this.extractCursorPosition(newLines, height);
+         newLines = this.applyLineResets(newLines);
+-        // Helper to clear scrollback and viewport and render all new lines
++        // Helper to redraw from a clean screen.
++        // Lines already flushed into scrollback cannot be rewritten, and writing them again
++        // would duplicate the whole transcript (scrollback is kept, so there is no \x1b[3J).
++        // Only the first full render, or an explicit requestHistoryReplay(), writes every
++        // line; every other full redraw repaints just the viewport.
+         const fullRender = (clear) => {
+             this.fullRedrawCount += 1;
++            const historyReplay = this.historyReplay;
++            this.historyReplay = undefined;
++            let startLine = 0;
              let buffer = "\x1b[?2026h"; // Begin synchronized output
              if (clear) {
                  buffer += this.deleteKittyImages(this.previousKittyImageIds);
 -                buffer += "\x1b[2J\x1b[H\x1b[3J"; // Clear screen, home, then clear scrollback
-+                buffer += "\x1b[2J\x1b[H"; // Clear viewport and home, preserving scrollback
++                if (historyReplay === "clear") {
++                    buffer += "\x1b[2J\x1b[H\x1b[3J"; // Clear screen, home, then clear scrollback
++                }
++                else if (historyReplay === "keep") {
++                    buffer += "\x1b[2J\x1b[H"; // Clear viewport and home, preserving scrollback
++                }
++                else {
++                    buffer += "\x1b[H\x1b[J"; // Home and erase the viewport only; scrollback untouched
++                    startLine = Math.max(0, newLines.length - height);
++                    // Rows below the previous viewport were never written; start at the old
++                    // viewport top so they scroll into scrollback instead of being skipped.
++                    // Row indexes are not comparable after a width change or forced render.
++                    if (!widthChanged) {
++                        startLine = Math.min(startLine, prevViewportTop);
++                    }
++                }
              }
-             for (let i = 0; i < newLines.length; i++) {
-                 if (i > 0)
+-            for (let i = 0; i < newLines.length; i++) {
+-                if (i > 0)
++            for (let i = startLine; i < newLines.length; i++) {
++                if (i > startLine)
+                     buffer += "\r\n";
+                 buffer += newLines[i];
+             }

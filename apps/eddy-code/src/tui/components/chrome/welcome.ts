@@ -102,8 +102,8 @@ function buildBreathingPalette(primaryHex: string, hueStops: number, subSteps: n
   return palette;
 }
 
-function formatTimeAgo(timestamp: number): string {
-  const seconds = Math.floor((Date.now() - timestamp) / 1000);
+function formatTimeAgo(timestamp: number, now: number): string {
+  const seconds = Math.floor((now - timestamp) / 1000);
   if (seconds < 60) return '刚刚';
   const minutes = Math.floor(seconds / 60);
   if (minutes < 60) return `${minutes}分钟前`;
@@ -135,6 +135,9 @@ export class WelcomeComponent implements Component {
   private breatheTimer: ReturnType<typeof setInterval> | null = null;
   private breathePalette: string[];
   private recentSessions: readonly RecentSession[];
+  // Fixed at creation: a ticking "N分钟前" would change lines that have already
+  // scrolled off-screen and force the TUI into a full redraw.
+  private readonly createdAt = Date.now();
   borderTitle: string | null = null;
 
   constructor(state: AppState, colors: ColorPalette, ui: TUI, recentSessions: readonly RecentSession[] = []) {
@@ -212,7 +215,7 @@ export class WelcomeComponent implements Component {
     } else {
       for (const session of sessions) {
         const name = session.title ?? session.id;
-        const timeAgo = formatTimeAgo(session.updatedAt);
+        const timeAgo = formatTimeAgo(session.updatedAt, this.createdAt);
         sessionLines.push(` ${dim('•')} ${muted(name)} ${dim(`(${timeAgo})`)}`);
       }
     }

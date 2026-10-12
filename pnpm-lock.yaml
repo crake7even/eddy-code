@@ -16,7 +16,7 @@ overrides:
 
 patchedDependencies:
   '@earendil-works/pi-tui@0.78.1':
-    hash: 2246d109d4673c0ce4462b22f87b315d3703fc6a6377a37e8068b0b69a957dd6
+    hash: 760f64984009bb88f07a8777a1a28ddbdd9b77e300f796aca6d22c69089e9fb2
     path: patches/@earendil-works__pi-tui@0.78.1.patch
 
 importers:
@@ -79,7 +79,7 @@ importers:
     dependencies:
       '@earendil-works/pi-tui':
         specifier: ^0.78.1
-        version: 0.78.1(patch_hash=2246d109d4673c0ce4462b22f87b315d3703fc6a6377a37e8068b0b69a957dd6)
+        version: 0.78.1(patch_hash=760f64984009bb88f07a8777a1a28ddbdd9b77e300f796aca6d22c69089e9fb2)
       '@mariozechner/clipboard':
         specifier: ^0.3.2
         version: 0.3.9
@@ -3962,7 +3962,7 @@ snapshots:
   '@colors/colors@1.5.0':
     optional: true
 
-  '@earendil-works/pi-tui@0.78.1(patch_hash=2246d109d4673c0ce4462b22f87b315d3703fc6a6377a37e8068b0b69a957dd6)':
+  '@earendil-works/pi-tui@0.78.1(patch_hash=760f64984009bb88f07a8777a1a28ddbdd9b77e300f796aca6d22c69089e9fb2)':
     dependencies:
       get-east-asian-width: 1.6.0
       marked: 15.0.12

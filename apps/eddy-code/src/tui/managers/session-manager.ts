@@ -273,6 +273,9 @@ export class SessionManager {
       this.host.showStatus(`警告：${resumeState.warning}`, this.host.state.theme.colors.warning);
     }
     this.host.showStatus(statusMessage);
+    // Full redraws only repaint the viewport, so write the replayed history once
+    // into a cleared scrollback to keep it scrollable without duplicates.
+    this.host.state.ui.requestHistoryReplay(true);
   }
 
   // ---------------------------------------------------------------------------
