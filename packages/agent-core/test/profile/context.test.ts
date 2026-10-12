@@ -4,7 +4,7 @@ import { join } from 'pathe';
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { loadAgentsMd } from '../../src/profile/context';
+import { loadAgentsMd, loadUserInstructions } from '../../src/profile/context';
 import { testJian } from '../fixtures/test-jian';
 
 let homeDir: string;
@@ -24,7 +24,7 @@ afterEach(async () => {
 });
 
 describe('loadAgentsMd user-level discovery', () => {
-  it('loads user-level branded and generic files before project-level', async () => {
+  it('separates user-level rules from project-level instructions', async () => {
     await mkdir(join(homeDir, '.eddy-code'), { recursive: true });
     await writeFile(join(homeDir, '.eddy-code', 'AGENTS.md'), 'user branded', 'utf-8');
     await mkdir(join(homeDir, '.agents'), { recursive: true });
@@ -33,18 +33,20 @@ describe('loadAgentsMd user-level discovery', () => {
 
     const result = await loadAgentsMd(testJian);
 
-    expect(result).toContain('user branded');
-    expect(result).toContain('user generic');
+    expect(result).not.toContain('user branded');
+    expect(result).not.toContain('user generic');
     expect(result).toContain('project instructions');
-    expect(result.indexOf('user branded')).toBeLessThan(result.indexOf('user generic'));
-    expect(result.indexOf('user generic')).toBeLessThan(result.indexOf('project instructions'));
+    const user = await loadUserInstructions(testJian);
+    expect(user).toContain('user branded');
+    expect(user).toContain('user generic');
+    expect(user).not.toContain('project instructions');
   });
 
   it('loads generic user-level .agents/AGENTS.md', async () => {
     await mkdir(join(homeDir, '.agents'), { recursive: true });
     await writeFile(join(homeDir, '.agents', 'AGENTS.md'), 'dot-agents generic', 'utf-8');
 
-    const result = await loadAgentsMd(testJian);
+    const result = await loadUserInstructions(testJian);
 
     expect(result).toContain('dot-agents generic');
   });
@@ -65,6 +67,30 @@ describe('loadAgentsMd user-level discovery', () => {
 
     const result = await loadAgentsMd(testJian);
 
-    expect(result.split('home branded').length - 1).toBe(1);
+    expect(result).not.toContain('home branded');
+    expect((await loadUserInstructions(testJian)).split('home branded').length - 1).toBe(1);
+  });
+});
+
+
+describe('global instruction budget and discovery', () => {
+  it('loads lowercase generic rules as fallback and leaves project rules separate', async () => {
+    await mkdir(join(homeDir, '.agents'), { recursive: true });
+    await writeFile(join(homeDir, '.agents', 'agents.md'), 'lowercase user rules');
+    await mkdir(join(workDir, '.eddy-code'), { recursive: true });
+    await writeFile(join(workDir, '.eddy-code', 'AGENTS.md'), 'project-local rules');
+    expect(await loadUserInstructions(testJian)).toContain('lowercase user rules');
+    expect(await loadAgentsMd(testJian)).toContain('project-local rules');
+    expect(await loadAgentsMd(testJian)).not.toContain('lowercase user rules');
+  });
+
+  it('bounds global rules to 32KB without truncating project instructions', async () => {
+    await mkdir(join(homeDir, '.eddy-code'), { recursive: true });
+    await writeFile(join(homeDir, '.eddy-code', 'AGENTS.md'), '中文'.repeat(20_000));
+    await writeFile(join(workDir, 'AGENTS.md'), 'project instructions');
+    const user = await loadUserInstructions(testJian);
+    expect(Buffer.byteLength(user, 'utf8')).toBeLessThanOrEqual(32 * 1024);
+    expect(user).not.toContain('�');
+    expect(await loadAgentsMd(testJian)).toContain('project instructions');
   });
 });

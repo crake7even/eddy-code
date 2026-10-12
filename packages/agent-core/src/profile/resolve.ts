@@ -158,6 +158,7 @@ function buildTemplateVars(
     EDDY_WORK_DIR: context.cwd,
     EDDY_WORK_DIR_LS: context.cwdListing ?? '',
     EDDY_AGENTS_MD: context.agentsMd ?? '',
+    EDDY_USER_INSTRUCTIONS: context.userInstructions ?? '',
     EDDY_SKILLS: skills,
     EDDY_ADDITIONAL_DIRS_INFO: context.additionalDirsInfo ?? '',
     ROLE_ADDITIONAL:

@@ -6,6 +6,11 @@ export class WorkingSetInjector extends DynamicInjector {
   protected getInjection(): string | undefined {
     const paths = this.agent.workingSet.getPaths();
     if (paths.length === 0) return undefined;
+    if (this.injectedAt !== null) {
+      const replies = this.agent.context.history.slice(this.injectedAt)
+        .filter((message) => message.role === 'assistant').length;
+      if (replies < 3) return undefined;
+    }
 
     return [
       '## Working Set',

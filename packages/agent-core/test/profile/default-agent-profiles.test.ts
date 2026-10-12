@@ -31,3 +31,21 @@ describe('default agent profiles', () => {
     ).toThrow(/Embedded agent profile source missing: profile\/default\/missing\.md/);
   });
 });
+
+
+describe('shared prompt priorities', () => {
+  it.each(['agent', 'coder', 'explore', 'plan', 'verify', 'reviewer', 'oracle', 'writer'])
+  ('keeps user instructions just before CONTRACT for %s', (name) => {
+    const prompt = DEFAULT_AGENT_PROFILES[name]?.systemPrompt({ ...promptContext, userInstructions: 'Keep answers concise.' });
+    expect(prompt).toBeDefined();
+    expect(prompt).toContain('Keep answers concise.');
+    expect(prompt!.indexOf('# User Instructions')).toBeLessThan(prompt!.indexOf('# CONTRACT'));
+    expect(prompt).toContain('If you are a subagent, do not stop to ask the user directly');
+    expect(prompt).toContain('Restrictions for plan mode (including read-only actions)');
+    expect(prompt).toContain('Verification is **optional by default**');
+    expect(prompt).toContain('Code review is **optional by default**');
+    expect(prompt).toContain('If the message is only a file path');
+    expect(prompt).not.toContain('Fusion Plan');
+    expect(prompt).not.toContain('Scream Code');
+  });
+});

@@ -6,6 +6,7 @@ import { PluginSessionStartInjector } from './plugin-session-start';
 import { PlanModeInjector } from './plan-mode';
 import { TodoListReminderInjector } from './todo-list';
 import { WolfPackModeInjector } from './wolfpack';
+import { UserInstructionsInjector } from './user-instructions';
 import { WorkingSetInjector } from './working-set';
 
 export class InjectionManager {
@@ -20,6 +21,7 @@ export class InjectionManager {
       new TodoListReminderInjector(agent),
       new GoalInjector(agent),
       new WorkingSetInjector(agent),
+      new UserInstructionsInjector(agent),
     ];
   }
 

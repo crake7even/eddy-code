@@ -9,16 +9,19 @@ const AGENTS_MD_MAX_BYTES = 32 * 1024;
 const S_IFMT = 0o170000;
 const S_IFREG = 0o100000;
 
-export type PreparedSystemPromptContext = Pick<SystemPromptContext, 'cwdListing' | 'agentsMd'>;
+export type PreparedSystemPromptContext = Pick<
+  SystemPromptContext, 'cwdListing' | 'agentsMd' | 'userInstructions'
+>;
 
 export async function prepareSystemPromptContext(
   jian: Jian,
 ): Promise<PreparedSystemPromptContext> {
-  const [cwdListing, agentsMd] = await Promise.all([
+  const [cwdListing, agentsMd, userInstructions] = await Promise.all([
     listDirectory(jian),
     loadAgentsMd(jian),
+    loadUserInstructions(jian),
   ]);
-  return { cwdListing, agentsMd };
+  return { cwdListing, agentsMd, userInstructions };
 }
 
 export async function loadAgentsMd(jian: Jian): Promise<string> {
@@ -27,8 +30,10 @@ export async function loadAgentsMd(jian: Jian): Promise<string> {
   const dirs = dirsRootToLeaf(jian, workDir, projectRoot);
   const discovered: AgentFile[] = [];
   const seen = new Set<string>();
+  const userPaths = new Set(userInstructionPaths(jian).map((path) => jian.normpath(path)));
 
   const collect = async (path: string): Promise<boolean> => {
+    if (userPaths.has(jian.normpath(path))) return false;
     const file = await readAgentFile(jian, path);
     if (file === undefined) return false;
     const key = jian.normpath(file.path);
@@ -38,19 +43,6 @@ export async function loadAgentsMd(jian: Jian): Promise<string> {
     return true;
   };
 
-  // User-level files come first so any project-level AGENTS.md overrides them.
-  const home = jian.gethome();
-  await collect(join(home, '.eddy-code', 'AGENTS.md'));
-
-  // Generic user-level dir (.agents) matches skill discovery.
-  const genericDirs = [join(home, '.agents')];
-  const genericFiles = genericDirs.flatMap((dir) =>
-    ['AGENTS.md', 'agents.md'].map((name) => join(dir, name)),
-  );
-  for (const file of genericFiles) {
-    if (await collect(file)) break;
-  }
-
   for (const dir of dirs) {
     await collect(join(dir, '.eddy-code', 'AGENTS.md'));
     for (const fileName of ['AGENTS.md', 'agents.md']) {
@@ -59,6 +51,27 @@ export async function loadAgentsMd(jian: Jian): Promise<string> {
   }
 
   return renderAgentFiles(discovered);
+}
+
+/** User-level rules are rendered separately from project instructions. */
+export async function loadUserInstructions(jian: Jian): Promise<string> {
+  const files: AgentFile[] = [];
+  for (const path of userInstructionPaths(jian)) {
+    const file = await readAgentFile(jian, path);
+    if (file === undefined) continue;
+    files.push(file);
+    if (path !== join(jian.gethome(), '.eddy-code', 'AGENTS.md')) break;
+  }
+  return renderAgentFiles(files);
+}
+
+function userInstructionPaths(jian: Jian): string[] {
+  const home = jian.gethome();
+  return [
+    join(home, '.eddy-code', 'AGENTS.md'),
+    join(home, '.agents', 'AGENTS.md'),
+    join(home, '.agents', 'agents.md'),
+  ];
 }
 
 async function findProjectRoot(jian: Jian, workDir: string): Promise<string> {

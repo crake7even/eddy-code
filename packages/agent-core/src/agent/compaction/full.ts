@@ -61,6 +61,7 @@ const COMPACTION_SYSTEM_PROMPT =
 export class FullCompaction {
   protected compactionCountInTurn = 0;
   private consecutiveCompactionFailures = 0;
+  private sessionSummaryPending = false;
   protected compacting: {
     abortController: AbortController;
     promise: Promise<void>;
@@ -87,6 +88,13 @@ export class FullCompaction {
             DEFAULT_COMPACTION_CONFIG.triggerRatio,
         }
       );
+  }
+
+  /** Consume the reminder requested by a successful context compaction. */
+  shouldInjectSessionSummary(): boolean {
+    const pending = this.sessionSummaryPending;
+    this.sessionSummaryPending = false;
+    return pending;
   }
 
   get isCompacting(): boolean {
@@ -386,6 +394,7 @@ export class FullCompaction {
       this.markCompleted();
       this.agent.emitEvent({ type: 'compaction.completed', result });
       this.agent.context.applyCompaction(result);
+      this.sessionSummaryPending = true;
       await this.extractAndStoreMemos(summary);
       this.triggerPostCompactHook(data, result);
 

@@ -26,6 +26,7 @@ import { abortable, userCancellationReason } from '../../utils/abort';
 import { USER_PROMPT_ORIGIN, type PromptOrigin, type ContextMessage } from '../context';
 import { renderUserPromptHookBlockResult, renderUserPromptHookResult } from '../../session/hooks';
 import { looksLikeVerificationCommand, requiresVerification } from '../working-set';
+import { canonicalDedupArgs } from './canonical-args';
 import { ToolCallDeduplicator } from './tool-dedup';
 
 interface ActiveTurn {
@@ -81,7 +82,9 @@ export class TurnFlow {
   private summaryGuardInjected = false;
   private turnStartWorkingSetPathCount = 0;
   private turnStartVerificationCount = 0;
-  private verificationFailureInjected = false;
+  private readonly remindedReasons = new Set<string>();
+  private wroteThisTurn = false;
+  private todoSuggestedThisTurn = false;
   private readonly MIN_FINAL_RESPONSE_LENGTH = 60;
 
   constructor(protected readonly agent: Agent) {}
@@ -355,7 +358,9 @@ export class TurnFlow {
     this.currentTurnId = turnId;
     this.agent.workingSet.decay(turnId);
     this.summaryGuardInjected = false;
-    this.verificationFailureInjected = false;
+    this.remindedReasons.clear();
+    this.wroteThisTurn = false;
+    this.todoSuggestedThisTurn = false;
     this.turnStartWorkingSetPathCount = this.agent.workingSet.getPaths().length;
     this.turnStartVerificationCount = this.agent.workingSet.getVerificationCount();
     this.currentStepByTurn.set(turnId, 0);
@@ -492,6 +497,7 @@ export class TurnFlow {
   private async runTurn(turnId: number, signal: AbortSignal): Promise<LoopTurnStopReason> {
     let stopHookContinuationUsed = false;
     const deduper = new ToolCallDeduplicator();
+    const deniedToolKeys = new Set<string>();
     await this.agent.mcp?.waitForInitialLoad(signal);
     while (true) {
       signal.throwIfAborted();
@@ -511,6 +517,7 @@ export class TurnFlow {
           hooks: {
             beforeStep: async ({ signal: stepSignal, stepNumber }) => {
               this.flushSteerBuffer();
+              deniedToolKeys.clear();
               this.currentStepHadContent = false;
               await this.agent.fullCompaction.beforeStep(stepSignal);
 
@@ -521,16 +528,25 @@ export class TurnFlow {
                   { kind: 'system_trigger', name: 'todo_required' },
                 );
               }
-              if (stepNumber === 2 && !this.todoSeenThisTurn) {
+              if (
+                this.wroteThisTurn &&
+                !this.todoSuggestedThisTurn &&
+                !this.todoSeenThisTurn &&
+                goal?.status !== 'active'
+              ) {
                 this.agent.context.appendSystemReminder(
                   'This task spans multiple steps. Use TodoList to track the remaining work and current phase.',
                   { kind: 'system_trigger', name: 'todo_suggested' },
                 );
+                this.todoSuggestedThisTurn = true;
               }
 
               // Inject session memory summary so the model retains context
               // after compaction strips detailed tool-call history.
-              const sessionSummary = this.agent.sessionMemory.getSessionSummary();
+              const summaryAfterCompaction = this.agent.fullCompaction.shouldInjectSessionSummary();
+              const sessionSummary = stepNumber === 1 || summaryAfterCompaction
+                ? this.agent.sessionMemory.getSessionSummary()
+                : '';
               if (sessionSummary.length > 0) {
                 this.agent.context.appendSystemReminder(sessionSummary, {
                   kind: 'injection',
@@ -580,7 +596,12 @@ export class TurnFlow {
                 }
 
                 const unverified = this.agent.workingSet.getUnverifiedPaths();
-                if (unverified.length > 0 && !hasPassedVerificationThisTurn) {
+                if (
+                  unverified.length > 0 &&
+                  !hasPassedVerificationThisTurn &&
+                  !this.remindedReasons.has('unverified')
+                ) {
+                  this.remindedReasons.add('unverified');
                   const suggestions = this.agent.workingSet.suggestVerificationCommands(
                     this.agent.config.cwd,
                   );
@@ -590,19 +611,33 @@ export class TurnFlow {
                   );
                 }
                 const goal = this.agent.goal.getGoal().goal;
-                if (goal?.status === 'active' && !this.todoSeenThisTurn) {
+                if (
+                  goal?.status === 'active' &&
+                  !this.todoSeenThisTurn &&
+                  !this.remindedReasons.has('goal-todo')
+                ) {
+                  this.remindedReasons.add('goal-todo');
                   reasons.push(
                     'An active goal exists but no TodoList update was made this turn. Update TodoList and continue.',
                   );
                 }
-                if (this.lastToolFailure?.isExploratory === false && !hasPassedVerificationThisTurn) {
+                if (
+                  this.lastToolFailure?.isExploratory === false &&
+                  !hasPassedVerificationThisTurn &&
+                  !this.remindedReasons.has('tool-failure')
+                ) {
+                  this.remindedReasons.add('tool-failure');
                   reasons.push(
                     `A required tool (${this.lastToolFailure.toolName}) failed this turn. ` +
                       'Analyze the error and fix it before reporting completion.',
                   );
                 }
-                if (latestVerification && !latestVerification.passed && !this.verificationFailureInjected) {
-                  this.verificationFailureInjected = true;
+                if (
+                  latestVerification &&
+                  !latestVerification.passed &&
+                  !this.remindedReasons.has('verification')
+                ) {
+                  this.remindedReasons.add('verification');
                   reasons.push(
                     `The last verification command failed (${latestVerification.command}). ` +
                       'Fix the failure before re-running verification. Do NOT downgrade to runtime smoke tests.',
@@ -698,7 +733,11 @@ export class TurnFlow {
               return undefined;
             },
             authorizeToolExecution: async (ctx) => {
-              return this.agent.permission.beforeToolCall(ctx);
+              const authorization = await this.agent.permission.beforeToolCall(ctx);
+              if (authorization?.block === true) {
+                deniedToolKeys.add(`${ctx.toolCall.name} ${canonicalDedupArgs(ctx.args)}`);
+              }
+              return authorization;
             },
             finalizeToolResult: async (ctx) => {
               // Resolve dedup BEFORE firing the PostToolUse hook so same-step
@@ -711,27 +750,34 @@ export class TurnFlow {
                 ctx.result,
               );
               const { isError, output } = finalResult;
+              // Same-step duplicates reuse the original result and its denial.
+              const denied = deniedToolKeys.has(`${ctx.toolCall.name} ${canonicalDedupArgs(ctx.args)}`);
 
               // Record in session memory for post-compaction context injection
-              this.agent.sessionMemory.recordToolExecution(
-                ctx.toolCall.name,
-                summarizeToolArgs(ctx.args),
-                isError === true,
-                ctx.stepNumber,
-              );
+              if (!denied) {
+                this.agent.sessionMemory.recordToolExecution(
+                  ctx.toolCall.name,
+                  summarizeToolArgs(ctx.args),
+                  isError === true,
+                  ctx.stepNumber,
+                );
+              }
 
               // Track accessed files for the working-set reminder.
-              this.recordWorkingSetPaths(
-                ctx.toolCall.name,
-                ctx.args,
-                Number(ctx.turnId),
-              );
+              if (!denied && isError !== true) {
+                this.recordWorkingSetPaths(
+                  ctx.toolCall.name,
+                  ctx.args,
+                  Number(ctx.turnId),
+                );
+              }
 
               // Record verification commands (passed or failed) so the convergence
               // gate can enforce fix-then-re-verify behavior and skip recently
               // passed checks. A passing verification also marks all touched files
               // as verified, since the command covered the current working set.
               if (
+                !denied &&
                 ctx.toolCall.name === 'Bash' &&
                 typeof (ctx.args as { command?: string }).command === 'string'
               ) {
@@ -759,7 +805,7 @@ export class TurnFlow {
               // When the verify agent reports its result, record the structured
               // verification status so the convergence gate can enforce fix-then-
               // re-verify behavior.
-              if (ctx.toolCall.name === 'Agent') {
+              if (!denied && ctx.toolCall.name === 'Agent') {
                 const subagentType = (ctx.args as { subagent_type?: string }).subagent_type;
                 if (subagentType === 'verify') {
                   const status = parseVerificationStatus(toolOutputText(output));
@@ -783,11 +829,15 @@ export class TurnFlow {
                 }
               }
 
-              if (ctx.toolCall.name === 'TodoList') {
+              if (!denied && isError !== true && ctx.toolCall.name === 'TodoList') {
                 this.todoSeenThisTurn = true;
               }
 
-              if (isError === true && ['Edit', 'Write', 'Bash', 'Agent'].includes(ctx.toolCall.name)) {
+              if (
+                !denied &&
+                isError === true &&
+                ['Edit', 'Write', 'Bash', 'Agent'].includes(ctx.toolCall.name)
+              ) {
                 const command =
                   ctx.toolCall.name === 'Bash'
                     ? String((ctx.args as { command?: string }).command ?? '')
@@ -803,10 +853,9 @@ export class TurnFlow {
                 this.lastToolFailure = { toolName: ctx.toolCall.name, isExploratory };
               } else if (isError !== true && this.lastToolFailure?.toolName === ctx.toolCall.name) {
                 // A successful execution of the same tool type resolves a previous
-                // exploratory failure (e.g. `npx tsc` missing the compiler, then
-                // `npx -p typescript tsc` succeeding). Blocking failures are only
-                // cleared when the turn resets.
-                if (this.lastToolFailure.isExploratory) {
+                // Edit/Write/Agent failure. Bash still needs a passing verification
+                // unless the earlier failure was only exploratory.
+                if (this.lastToolFailure.isExploratory || ctx.toolCall.name !== 'Bash') {
                   this.lastToolFailure = null;
                 }
               }
@@ -862,6 +911,7 @@ export class TurnFlow {
       }
     }
     if (toolName === 'Edit' || toolName === 'Write') {
+      this.wroteThisTurn = true;
       const path = (args as { path?: string }).path;
       if (path !== undefined) {
         workingSet.touch(path, turnId, requiresVerification(path, this.agent.config.cwd));
@@ -967,6 +1017,16 @@ export class TurnFlow {
       /(^|;\s*|&&\s*)\s*yarn\s+add\s+(--dev\s+)?typescript/,
       /(^|;\s*|&&\s*)\s*yarn\s+add\s+(--dev\s+)?tsx/,
     ];
+    // Only classify a compound command as a read-only query when every
+    // segment is a query (or a directory change). A failing build followed
+    // by `git diff` must still count as a blocking failure.
+    const segments = normalized.split(/(?:&&|\|\||[;|])/).map((part) => part.trim());
+    const readOnlyQuery = /^(?:git\s+(?:status|diff|log)\b|(?:grep|rg|wc|sort|uniq|diff|file|stat|df|du)\b)/;
+    if (
+      !/[>`$]/.test(normalized) &&
+      segments.some((part) => readOnlyQuery.test(part)) &&
+      segments.every((part) => readOnlyQuery.test(part) || /^cd\s+/.test(part))
+    ) return true;
     return exploratoryPatterns.some((pattern) => pattern.test(normalized));
   }
 
