@@ -15,7 +15,7 @@ const PERMISSION_OPTIONS: readonly ChoiceOption[] = [
     value: 'auto',
     label: '自动',
     description:
-      '完全无交互运行。工具操作自动批准，跳过代理问题以便其自行决策。',
+      '完全无交互运行。工具操作自动批准，跳过代理问题以便其自行决策；敏感文件、写入 .git 和项目外写入会被拒绝。',
   },
   {
     value: 'yolo',

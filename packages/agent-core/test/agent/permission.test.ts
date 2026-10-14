@@ -454,9 +454,8 @@ describe('Permission auto mode', () => {
   it.each([
     ['Read', { path: '/tmp/notes.md' }],
     ['ReadMediaFile', { path: '/tmp/image.png' }],
-    ['Write', { path: '/tmp/notes.md', content: 'x' }],
-    ['Edit', { path: '/tmp/notes.md', old_string: 'a', new_string: 'b' }],
-  ] as const)('approves %s outside the cwd in auto mode', async (toolName, args) => {
+    ['Read', { path: '/workspace/.git/config' }],
+  ] as const)('approves %s %j in auto mode', async (toolName, args) => {
     const { manager, requestApproval } = makePermissionManager(async () => ({
       decision: 'approved',
     }));
@@ -491,6 +490,25 @@ describe('Permission auto mode', () => {
       expect(requestApproval).not.toHaveBeenCalled();
     },
   );
+
+  it.each([
+    ['Write', { path: '/tmp/notes.md', content: 'x' }, 'Writing outside the working directory'],
+    ['Edit', { path: '/tmp/notes.md', old_string: 'a', new_string: 'b' }, 'Writing outside the working directory'],
+    ['Read', { path: '/workspace/.env' }, 'Accessing a sensitive file'],
+    ['Write', { path: '/workspace/.env', content: 'x' }, 'Accessing a sensitive file'],
+    ['Write', { path: '/workspace/.git/hooks/pre-commit', content: 'x' }, 'Writing to a git control path'],
+  ] as const)('denies %s %j in auto mode without asking', async (toolName, args, message) => {
+    const { manager, requestApproval } = makePermissionManager(async () => ({
+      decision: 'approved',
+    }));
+    manager.setMode('auto');
+
+    await expect(
+      manager.beforeToolCall(hookContext({ id: `call_${toolName}`, toolName, args })),
+    ).resolves.toMatchObject({ block: true, reason: expect.stringContaining(message) });
+
+    expect(requestApproval).not.toHaveBeenCalled();
+  });
 
   it('approves Grep search outside the cwd in auto mode', async () => {
     const { manager, requestApproval } = makePermissionManager(async () => ({
@@ -626,6 +644,7 @@ describe('Permission policy chain', () => {
       'auto-mode-ask-user-question-deny',
       'plan-mode-guard-deny',
       'user-configured-deny',
+      'auto-mode-file-access-deny',
       'auto-mode-approve',
       'session-approval-history',
       'user-configured-ask',
