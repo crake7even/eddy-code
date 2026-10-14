@@ -412,6 +412,21 @@ describe('Permission auto mode', () => {
     },
   );
 
+  it('blocks instead of approving when no approval rpc is available', async () => {
+    const { manager, requestApproval } = makePermissionManager(
+      async () => ({ decision: 'approved' }),
+      { withoutApprovalRpc: true },
+    );
+    manager.setMode('manual');
+
+    await expect(
+      manager.beforeToolCall(
+        hookContext({ id: 'call_write', toolName: 'Write', args: { path: '/tmp/out.md', content: 'x' } }),
+      ),
+    ).resolves.toMatchObject({ block: true });
+    expect(requestApproval).not.toHaveBeenCalled();
+  });
+
   it.each(
     (['manual', 'yolo'] as const).flatMap((mode) =>
       [
@@ -796,8 +811,6 @@ describe('Default tool approve policy', () => {
     ['TodoList', {}],
     ['TaskList', {}],
     ['TaskOutput', { task_id: 'task_1' }],
-    ['WebSearch', { query: 'eddy code' }],
-    ['FetchURL', { url: 'https://example.com' }],
     ['Agent', { prompt: 'review this' }],
     ['AskUserQuestion', { questions: [] }],
     ['Skill', { name: 'test-skill' }],
@@ -825,6 +838,9 @@ describe('Default tool approve policy', () => {
     ['Write', { path: '/workspace/a.ts', content: 'x' }],
     ['Edit', { path: '/workspace/a.ts', old_string: 'a', new_string: 'b' }],
     ['Custom', { value: 1 }],
+    ['WebSearch', { query: 'eddy code' }],
+    ['FetchURL', { url: 'https://example.com' }],
+    ['MakeSkillApply', { name: 'demo', description: 'demo skill' }],
   ] as const)('does not default-approve %s', async (toolName, args) => {
     const { manager, requestApproval } = makePermissionManager(async () => ({
       decision: 'approved',
@@ -3155,6 +3171,7 @@ function makePermissionManager(
     readonly cwd?: string;
     readonly agentType?: Agent['type'];
     readonly hooks?: Agent['hooks'];
+    readonly withoutApprovalRpc?: boolean;
   } = {},
 ): {
   manager: PermissionManager;
@@ -3171,7 +3188,7 @@ function makePermissionManager(
     emitStatusUpdated: vi.fn(),
     records: { logRecord: record },
     replayBuilder: { push: vi.fn() },
-    rpc: { requestApproval },
+    rpc: options.withoutApprovalRpc === true ? {} : { requestApproval },
     hooks: options.hooks,
     planMode: {
       get isActive() {

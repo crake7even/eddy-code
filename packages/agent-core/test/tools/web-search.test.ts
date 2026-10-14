@@ -24,6 +24,12 @@ function fakeProvider(
 }
 
 describe('WebSearchTool', () => {
+  it('approve-for-session covers the whole tool, not one query', () => {
+    const tool = new WebSearchTool(fakeProvider());
+    const execution = tool.resolveExecution({ query: 'eddy code' });
+    expect('approvalRule' in execution && execution.approvalRule).toBe('WebSearch');
+  });
+
   it('has name "WebSearch" and a non-empty description', () => {
     const tool = new WebSearchTool(fakeProvider());
     expect(tool.name).toBe('WebSearch');

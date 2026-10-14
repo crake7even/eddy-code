@@ -10,8 +10,6 @@ const DEFAULT_APPROVE_TOOLS: Record<string, true> = {
   TaskList: true,
   TaskOutput: true,
   CronList: true,
-  WebSearch: true,
-  FetchURL: true,
   Agent: true,
   AskUserQuestion: true,
   Skill: true,
@@ -22,7 +20,6 @@ const DEFAULT_APPROVE_TOOLS: Record<string, true> = {
   SetGoalBudget: true,
   WriteGoalNote: true,
   MakeSkillPlan: true,
-  MakeSkillApply: true,
 };
 
 export class DefaultToolApprovePermissionPolicy implements PermissionPolicy {

@@ -12,7 +12,11 @@ import type { BuiltinTool } from '../../../agent/tool';
 import { ToolAccesses } from '../../../loop/tool-access';
 import type { ExecutableToolContext, ExecutableToolResult, ToolExecution } from '../../../loop/types';
 import { toInputJsonSchema } from '../../support/input-schema';
-import { literalRulePattern, matchesGlobRuleSubject } from '../../support/rule-match';
+import {
+  escapeRuleSubjectLiteral,
+  literalRulePattern,
+  matchesGlobRuleSubject,
+} from '../../support/rule-match';
 import { ToolResultBuilder } from '../../support/result-builder';
 import DESCRIPTION from './fetch-url.md';
 
@@ -76,7 +80,7 @@ export class FetchURLTool implements BuiltinTool<FetchURLInput> {
       accesses: ToolAccesses.none(),
       description: `Fetching: ${preview}`,
       display: { kind: 'url_fetch', url: args.url },
-      approvalRule: literalRulePattern(this.name, args.url),
+      approvalRule: originRulePattern(this.name, args.url),
       matchesRule: (ruleArgs) => matchesGlobRuleSubject(ruleArgs, args.url),
       execute: (ctx) => this.execution(args, ctx),
     };
@@ -123,4 +127,16 @@ export class FetchURLTool implements BuiltinTool<FetchURLInput> {
     }
   }
 
+}
+
+/** Approve-for-session covers every URL on the same origin; unparsable URLs stay literal. */
+function originRulePattern(toolName: string, url: string): string {
+  let origin: string;
+  try {
+    origin = new URL(url).origin;
+  } catch {
+    return literalRulePattern(toolName, url);
+  }
+  if (origin === 'null') return literalRulePattern(toolName, url);
+  return `${toolName}(${escapeRuleSubjectLiteral(origin)}/**)`;
 }

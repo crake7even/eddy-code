@@ -12,6 +12,8 @@ import {
   HttpFetchError,
   type UrlFetcher,
 } from '../../src/tools/builtin/web/fetch-url';
+import { matchPermissionRule } from '../../src/agent/permission/matches-rule';
+import type { RunnableToolExecution, ToolExecution } from '../../src/loop/types';
 import { EddyCliFetchURLProvider } from '../../src/tools/providers/eddy-cli-fetch-url';
 import { toolContentString } from './fixtures/fake-jian';
 import { executeTool } from './fixtures/execute-tool';
@@ -25,7 +27,36 @@ function fakeFetcher(
   return { fetch: vi.fn().mockResolvedValue({ content, kind }) };
 }
 
+function runnable(execution: ToolExecution): RunnableToolExecution {
+  if (!('approvalRule' in execution)) throw new Error('expected a runnable execution');
+  return execution;
+}
+
+function sessionRuleMatches(rulePattern: string, execution: RunnableToolExecution): boolean {
+  return matchPermissionRule({
+    rule: { decision: 'allow', scope: 'session-runtime', pattern: rulePattern, reason: 'test' },
+    toolName: 'FetchURL',
+    execution,
+  }) !== undefined;
+}
+
 describe('FetchURLTool', () => {
+  it('approve-for-session covers the same origin only', () => {
+    const tool = new FetchURLTool(fakeFetcher());
+    const rule = runnable(tool.resolveExecution({ url: 'https://docs.example.com/a?q=1' })).approvalRule;
+    expect(rule).toBe('FetchURL(https://docs.example.com/**)');
+    const matches = (url: string) => sessionRuleMatches(rule, runnable(tool.resolveExecution({ url })));
+    expect(matches('https://docs.example.com/other/page')).toBe(true);
+    expect(matches('https://docs.example.com.evil.io/a')).toBe(false);
+    expect(matches('https://docs.example.com@evil.io/a')).toBe(false);
+    expect(matches('https://evil.io/https://docs.example.com/a')).toBe(false);
+  });
+
+  it('keeps a literal approval rule for unparsable URLs', () => {
+    const tool = new FetchURLTool(fakeFetcher());
+    expect(runnable(tool.resolveExecution({ url: 'not a url' })).approvalRule).toBe('FetchURL(not a url)');
+  });
+
   it('has name "FetchURL" and a non-empty description', () => {
     const tool = new FetchURLTool(fakeFetcher());
     expect(tool.name).toBe('FetchURL');

@@ -12,7 +12,7 @@ import type { BuiltinTool } from '../../../agent/tool';
 import { ToolAccesses } from '../../../loop/tool-access';
 import type { ExecutableToolContext, ExecutableToolResult, ToolExecution } from '../../../loop/types';
 import { toInputJsonSchema } from '../../support/input-schema';
-import { literalRulePattern, matchesGlobRuleSubject } from '../../support/rule-match';
+import { matchesGlobRuleSubject } from '../../support/rule-match';
 import { ToolResultBuilder } from '../../support/result-builder';
 import DESCRIPTION from './web-search.md';
 
@@ -72,7 +72,8 @@ export class WebSearchTool implements BuiltinTool<WebSearchInput> {
       accesses: ToolAccesses.none(),
       description: `Searching: ${preview}`,
       display: { kind: 'search', query: args.query },
-      approvalRule: literalRulePattern(this.name, args.query),
+      // Queries vary every call, so approve-for-session covers the whole tool.
+      approvalRule: this.name,
       matchesRule: (ruleArgs) => matchesGlobRuleSubject(ruleArgs, args.query),
       execute: (ctx) => this.execution(args, ctx),
     };

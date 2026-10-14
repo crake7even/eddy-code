@@ -238,8 +238,10 @@ export class PermissionManager {
         this.pendingApprovals.delete(approvalId);
       }
     } else {
+      // No approval channel: fail closed instead of silently approving.
       response = {
-        decision: 'approved',
+        decision: 'cancelled',
+        feedback: 'No approval handler is available.',
       };
     }
 
