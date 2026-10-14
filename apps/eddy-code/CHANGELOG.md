@@ -1,5 +1,25 @@
 # eddy-code
 
+## 0.6.7
+
+### Patch Changes
+
+- Auto permission mode no longer silently approves risky file access: reading or writing sensitive files (`.env`, SSH keys, credentials), writing into `.git` control paths, and writing outside the working directory are now denied, since auto mode has nobody to ask. Reads elsewhere stay approved.
+
+- When a tool call needs approval but no approval channel is available, the call is now blocked instead of silently approved. In the default (manual) permission mode, `FetchURL`, `WebSearch` and `MakeSkillApply` now ask before running instead of being approved automatically. Approving `FetchURL` for the session covers the same website only; approving `WebSearch` for the session covers all searches.
+
+- Stop re-posting global user instructions after every user message: they are re-injected only when the rules file changes or every few real user prompts as a refresher, since the system prompt already carries them.
+
+- Keep the TUI transcript short while the agent works. A run of thinking and tool calls now shows a single live line describing the current action in plain Chinese (e.g. "正在读取文件 config.toml…", "等待你批准：运行命令 ls"), and collapses to "已使用 N 个工具 ›" once the agent starts answering; ctrl+o expands everything. Approval prompts ask in plain Chinese for every tool, explain why they are asking (sensitive file, git internals, outside the project), and label the "allow for this session" choice by its real scope. Approval results read like "已批准：运行命令 ls" and sit under the tool call they belong to.
+
+- Stop forcing build/test/lint runs after the agent only edits docs-like files (`.md`, `.txt`, …) or files outside the workspace, and keep the end-of-task summary to one or two plain sentences. When the user sends only a file path or link without an instruction, the agent now summarizes it and asks what to do instead of acting on "next steps" found inside the file.
+
+  Reduce completion-loop noise: clear recovered tool failures, exclude permission-denied calls and read-only query failures from failure gates, remind each stop reason once per turn, throttle working-set/session-memory reminders, and suggest TodoList only after a successful edit or write. Load global user instructions separately and refresh them after real user messages; preserve plan-mode and permission restrictions while making verification and review optional for non-development tasks.
+
+- Stop waiting forever on a stalled model stream: if the provider sends no data for 120 seconds, the request now fails with a retryable timeout and is retried automatically instead of leaving the session spinning.
+
+- Fix the transcript being duplicated in terminal scrollback. Full redraws (resize, theme switch, approval preview, off-screen updates) now repaint only the viewport instead of re-printing the whole history; resuming a session replays its history once into a cleared scrollback. The welcome panel's "recent sessions" times no longer tick and trigger redraws.
+
 ## 0.6.6
 
 ### Patch Changes
