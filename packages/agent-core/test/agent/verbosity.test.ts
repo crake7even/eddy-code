@@ -3,7 +3,9 @@ import { describe, expect, it, vi } from 'vitest';
 import type { StatResult } from '@eddy-code/jan';
 import type { ToolCall } from '@eddy-code/yc';
 
+import { USER_INSTRUCTIONS_REPEAT_INTERVAL } from '../../src/agent/injection/user-instructions';
 import { WorkingSetInjector } from '../../src/agent/injection/working-set';
+import { loadUserInstructions } from '../../src/profile/context';
 import { createFakeJian } from '../tools/fixtures/fake-jian';
 import { createCommandJian, testAgent, type TestAgentContext } from './harness/agent';
 
@@ -292,21 +294,58 @@ describe('user instruction reminders', () => {
     return ctx;
   }
 
-  it('repeats global rules only after a real user message, including steering', async () => {
+  async function useRulesInSystemPrompt(ctx: TestAgentContext) {
+    const rules = await loadUserInstructions(ctx.agent.jian);
+    ctx.agent.config.update({ systemPrompt: `# User Instructions\n\n${rules}` });
+  }
+
+  async function userPrompt(ctx: TestAgentContext, text: string) {
+    ctx.agent.context.appendUserMessage([{ type: 'text', text }]);
+    await ctx.agent.injection.inject();
+  }
+
+  it('injects rules missing from the system prompt once, then only after real user prompts', async () => {
     const ctx = instructionAgent();
     await ctx.agent.injection.inject();
     expect(reminders(ctx, 'user_instructions')).toEqual([]);
-    ctx.agent.context.appendUserMessage([{ type: 'text', text: 'first request' }]);
-    await ctx.agent.injection.inject();
+    await userPrompt(ctx, 'first request');
     await ctx.agent.injection.inject();
     expect(reminders(ctx, 'user_instructions')).toHaveLength(1);
+    expect(reminders(ctx, 'user_instructions')[0]).toContain('Reply briefly in Chinese.');
     ctx.agent.context.appendUserMessage([{ type: 'text', text: 'background completion' }], { kind: 'system_trigger', name: 'background' });
     await ctx.agent.injection.inject();
+    await userPrompt(ctx, 'keep it brief');
     expect(reminders(ctx, 'user_instructions')).toHaveLength(1);
-    ctx.agent.context.appendUserMessage([{ type: 'text', text: 'keep it brief' }]);
-    await ctx.agent.injection.inject();
+  });
+
+  it('does not repeat rules already in the system prompt until the refresh interval', async () => {
+    const ctx = instructionAgent();
+    await useRulesInSystemPrompt(ctx);
+    for (let i = 1; i < USER_INSTRUCTIONS_REPEAT_INTERVAL; i++) {
+      await userPrompt(ctx, `request ${i}`);
+    }
+    expect(reminders(ctx, 'user_instructions')).toEqual([]);
+    await userPrompt(ctx, 'refresh due');
+    expect(reminders(ctx, 'user_instructions')).toHaveLength(1);
+    for (let i = 1; i < USER_INSTRUCTIONS_REPEAT_INTERVAL; i++) {
+      await userPrompt(ctx, `later ${i}`);
+    }
+    expect(reminders(ctx, 'user_instructions')).toHaveLength(1);
+    await userPrompt(ctx, 'second refresh');
     expect(reminders(ctx, 'user_instructions')).toHaveLength(2);
-    expect(reminders(ctx, 'user_instructions')[1]).toContain('Reply briefly in Chinese.');
+  });
+
+  it('re-injects immediately when the rules file changes', async () => {
+    const ctx = instructionAgent();
+    await useRulesInSystemPrompt(ctx);
+    await userPrompt(ctx, 'first request');
+    expect(reminders(ctx, 'user_instructions')).toEqual([]);
+    vi.mocked(ctx.agent.jian.readText).mockResolvedValue('Reply in English.');
+    await userPrompt(ctx, 'second request');
+    expect(reminders(ctx, 'user_instructions')).toHaveLength(1);
+    expect(reminders(ctx, 'user_instructions')[0]).toContain('Reply in English.');
+    await userPrompt(ctx, 'third request');
+    expect(reminders(ctx, 'user_instructions')).toHaveLength(1);
   });
 
   it('does not inject user reminders into subagents', async () => {
