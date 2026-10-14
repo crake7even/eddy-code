@@ -108,6 +108,12 @@ export interface GenerateOptions {
    * drained, before post-processing the assembled response.
    */
   onStreamEnd?: () => void;
+  /**
+   * Fail the call with a retryable `APITimeoutError` when the stream delivers
+   * no part for this many milliseconds. Defaults to
+   * `DEFAULT_STREAM_IDLE_TIMEOUT_MS`; `0` disables the guard.
+   */
+  streamIdleTimeoutMs?: number;
 }
 
 /**

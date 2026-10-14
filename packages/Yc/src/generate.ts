@@ -1,4 +1,4 @@
-import { APIEmptyResponseError } from './errors';
+import { APIEmptyResponseError, APITimeoutError } from './errors';
 import {
   isContentPart,
   isToolCall,
@@ -11,6 +11,13 @@ import {
 import type { ChatProvider, FinishReason, GenerateOptions, StreamedMessage } from './provider';
 import type { Tool } from './tool';
 import type { TokenUsage } from './usage';
+
+/**
+ * Default time the stream may go without delivering a part before the call
+ * fails with a retryable {@link APITimeoutError}. Guards against providers
+ * that stop sending data without closing the connection.
+ */
+export const DEFAULT_STREAM_IDLE_TIMEOUT_MS = 120_000;
 
 /** Snapshot of a ToolCall excluding the internal `_streamIndex` routing field. */
 type StoredToolCall = Omit<ToolCall, '_streamIndex'>;
@@ -111,49 +118,75 @@ export async function generate(
   // the stream.
   await throwIfAborted(options?.signal, stream);
 
-  for await (const part of stream) {
-    await throwIfAborted(options?.signal, stream);
-
-    // Notify raw part callback (deep copy to avoid aliasing mutations).
-    if (callbacks?.onMessagePart !== undefined) {
-      await callbacks.onMessagePart(deepCopyPart(part));
-      await throwIfAborted(options?.signal, stream);
-    }
-
-    // Index-based routing for parallel tool call argument deltas.
-    // When a ToolCallPart arrives with an index referring to a tool call
-    // that is NOT the currently-pending one, append it directly to the
-    // correct ToolCall in message.toolCalls instead of relying on sequential
-    // merging. This prevents argument cross-contamination across parallel calls.
-    if (
-      isToolCallPart(part) &&
-      part.index !== undefined &&
-      !isPendingToolCallAtIndex(pendingPart, part.index)
-    ) {
-      const arrayIdx = toolCallIndexMap.get(part.index);
-      if (arrayIdx !== undefined) {
-        const target = message.toolCalls[arrayIdx];
-        if (target !== undefined && part.argumentsPart !== null) {
-          target.arguments =
-            target.arguments === null
-              ? part.argumentsPart
-              : target.arguments + part.argumentsPart;
+  const idleTimeoutMs = options?.streamIdleTimeoutMs ?? DEFAULT_STREAM_IDLE_TIMEOUT_MS;
+  const iterator = stream[Symbol.asyncIterator]();
+  try {
+    for (;;) {
+      let next: IteratorResult<StreamedMessagePart>;
+      try {
+        next = await nextWithIdleTimeout(iterator, idleTimeoutMs);
+      } catch (error) {
+        if (error instanceof StreamIdleTimeout) {
+          await cancelStream(stream);
+          throw new APITimeoutError(
+            `No data received from ${provider.name} (${provider.modelName}) for ` +
+              `${String(Math.round(idleTimeoutMs / 1000))}s; the response stream stalled.`,
+          );
         }
-        continue;
+        throw error;
       }
-      // Unknown index — fall through to the sequential logic as a safety net.
+      if (next.done === true) break;
+      const part = next.value;
+      await throwIfAborted(options?.signal, stream);
+
+      // Notify raw part callback (deep copy to avoid aliasing mutations).
+      if (callbacks?.onMessagePart !== undefined) {
+        await callbacks.onMessagePart(deepCopyPart(part));
+        await throwIfAborted(options?.signal, stream);
+      }
+
+      // Index-based routing for parallel tool call argument deltas.
+      // When a ToolCallPart arrives with an index referring to a tool call
+      // that is NOT the currently-pending one, append it directly to the
+      // correct ToolCall in message.toolCalls instead of relying on sequential
+      // merging. This prevents argument cross-contamination across parallel calls.
+      if (
+        isToolCallPart(part) &&
+        part.index !== undefined &&
+        !isPendingToolCallAtIndex(pendingPart, part.index)
+      ) {
+        const arrayIdx = toolCallIndexMap.get(part.index);
+        if (arrayIdx !== undefined) {
+          const target = message.toolCalls[arrayIdx];
+          if (target !== undefined && part.argumentsPart !== null) {
+            target.arguments =
+              target.arguments === null
+                ? part.argumentsPart
+                : target.arguments + part.argumentsPart;
+          }
+          continue;
+        }
+        // Unknown index — fall through to the sequential logic as a safety net.
+      }
+
+      if (pendingPart === null) {
+        pendingPart = part;
+      } else if (!mergeInPlace(pendingPart, part)) {
+        // Could not merge — flush the pending part and start a new one.
+        // For parallel tool calls this happens when a new ToolCall header arrives
+        // while a previous ToolCall is still pending; the flush finalizes the
+        // previous tool call into `message.toolCalls`.
+        flushPart(message, pendingPart, toolCallIndexMap);
+        pendingPart = part;
+      }
     }
 
-    if (pendingPart === null) {
-      pendingPart = part;
-    } else if (!mergeInPlace(pendingPart, part)) {
-      // Could not merge — flush the pending part and start a new one.
-      // For parallel tool calls this happens when a new ToolCall header arrives
-      // while a previous ToolCall is still pending; the flush finalizes the
-      // previous tool call into `message.toolCalls`.
-      flushPart(message, pendingPart, toolCallIndexMap);
-      pendingPart = part;
-    }
+  } catch (error) {
+    // Mirror `for await` semantics: release the stream when the loop exits early.
+    try {
+      await iterator.return?.();
+    } catch {}
+    throw error;
   }
 
   await throwIfAborted(options?.signal, stream);
@@ -284,4 +317,25 @@ function flushPart(
  */
 function deepCopyPart(part: StreamedMessagePart): StreamedMessagePart {
   return structuredClone(part);
+}
+
+class StreamIdleTimeout extends Error {}
+
+/** Await the next stream part, rejecting with {@link StreamIdleTimeout} if none arrives in time. */
+async function nextWithIdleTimeout<T>(
+  iterator: AsyncIterator<T>,
+  timeoutMs: number,
+): Promise<IteratorResult<T>> {
+  if (!Number.isFinite(timeoutMs) || timeoutMs <= 0) return iterator.next();
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const timeout = new Promise<never>((_, reject) => {
+    timer = setTimeout(() => {
+      reject(new StreamIdleTimeout());
+    }, timeoutMs);
+  });
+  try {
+    return await Promise.race([iterator.next(), timeout]);
+  } finally {
+    clearTimeout(timer);
+  }
 }

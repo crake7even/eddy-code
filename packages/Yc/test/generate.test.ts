@@ -1,4 +1,4 @@
-import { APIEmptyResponseError } from '#/errors';
+import { APIEmptyResponseError, APITimeoutError, isRetryableGenerateError } from '#/errors';
 import { generate } from '#/generate';
 import type { Message, StreamedMessagePart, ToolCall } from '#/message';
 import type { ChatProvider, StreamedMessage, ThinkingEffort } from '#/provider';
@@ -903,5 +903,81 @@ describe('generate()', () => {
       expect(result.finishReason).toBe('filtered');
       expect(result.rawFinishReason).toBe('content_filter');
     });
+  });
+});
+
+describe('generate() stream idle timeout', () => {
+  function stallingStream(first: StreamedMessagePart, onReturn: () => void): StreamedMessage {
+    let sent = false;
+    return {
+      id: null,
+      usage: null,
+      finishReason: null,
+      rawFinishReason: null,
+      [Symbol.asyncIterator](): AsyncIterator<StreamedMessagePart> {
+        return {
+          next: async () => {
+            if (!sent) {
+              sent = true;
+              return { done: false, value: first };
+            }
+            return new Promise<IteratorResult<StreamedMessagePart>>(() => {});
+          },
+          return: async () => {
+            onReturn();
+            return { done: true, value: undefined };
+          },
+        };
+      },
+    };
+  }
+
+  it('fails with a retryable timeout when the stream stops sending data', async () => {
+    vi.useFakeTimers();
+    try {
+      const onReturn = vi.fn();
+      const stream = stallingStream({ type: 'text', text: 'partial' }, onReturn);
+      const pending = generate(createMockProvider(stream), '', [], [], undefined, {
+        streamIdleTimeoutMs: 1000,
+      });
+      const assertion = expect(pending).rejects.toBeInstanceOf(APITimeoutError);
+      await vi.advanceTimersByTimeAsync(1000);
+      await assertion;
+      await expect(pending).rejects.toSatisfy(isRetryableGenerateError);
+      expect(onReturn).toHaveBeenCalled();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('does not time out while parts keep arriving', async () => {
+    vi.useFakeTimers();
+    try {
+      const parts: StreamedMessagePart[] = [
+        { type: 'text', text: 'a' },
+        { type: 'text', text: 'b' },
+        { type: 'text', text: 'c' },
+      ];
+      const stream: StreamedMessage = {
+        id: null,
+        usage: null,
+        finishReason: null,
+        rawFinishReason: null,
+        async *[Symbol.asyncIterator]() {
+          for (const part of parts) {
+            await new Promise((resolve) => setTimeout(resolve, 800));
+            yield part;
+          }
+        },
+      };
+      const pending = generate(createMockProvider(stream), '', [], [], undefined, {
+        streamIdleTimeoutMs: 1000,
+      });
+      await vi.advanceTimersByTimeAsync(2400);
+      const result = await pending;
+      expect(result.message.content).toEqual([{ type: 'text', text: 'abc' }]);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });
