@@ -9,7 +9,6 @@ export const CHROME_GUTTER = 1;
 
 // Shared preview caps used by thinking, tool results, and shell snippets.
 export const RESULT_PREVIEW_LINES = 3;
-export const THINKING_PREVIEW_LINES = 2;
 export const COMMAND_PREVIEW_LINES = 10;
 
 // Shell output is capped before wrapping to prevent a single huge command

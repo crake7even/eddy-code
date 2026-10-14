@@ -113,6 +113,8 @@ export interface ApprovalPanelData {
   tool_name: string;
   action: string;
   description: string;
+  /** Plain-language reason the policy asked, if any. */
+  reason_text?: string;
   display: DisplayBlock[];
   choices: ApprovalPanelChoice[];
 }

@@ -45,6 +45,7 @@ export interface SessionManagerHost {
   refreshSessionTitle(): void;
   updateQueueDisplay(): void;
   appendApprovalTranscriptEntry(request: ApprovalRequest, response: ApprovalResponse): void;
+  noteApprovalPending(request: ApprovalRequest): void;
   hasSessionContent(): boolean;
   stopMemoryIdleTimer(): void;
 }
@@ -193,9 +194,15 @@ export class SessionManager {
 
   private registerSessionHandlers(session: Session): void {
     session.setApprovalHandler(
-      createApprovalRequestHandler(this.host.approvalController, (request, response) => {
-        this.host.appendApprovalTranscriptEntry(request, response);
-      }),
+      createApprovalRequestHandler(
+        this.host.approvalController,
+        (request, response) => {
+          this.host.appendApprovalTranscriptEntry(request, response);
+        },
+        (request) => {
+          this.host.noteApprovalPending(request);
+        },
+      ),
     );
     session.setQuestionHandler(createQuestionAskHandler(this.host.questionController));
   }

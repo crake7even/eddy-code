@@ -13,10 +13,11 @@ import {
   BRAILLE_SPINNER_FRAMES,
   BRAILLE_SPINNER_INTERVAL_MS,
   MESSAGE_INDENT,
-  THINKING_PREVIEW_LINES,
 } from '#/tui/constant/rendering';
 import { STATUS_BULLET } from '#/tui/constant/symbols';
 import type { ColorPalette } from '#/tui/theme/colors';
+import type { ThinkingFollowUp } from '#/tui/types';
+import { summarizeToolActions } from '#/tui/utils/tool-labels';
 
 export type ThinkingRenderMode = 'live' | 'finalized';
 
@@ -26,6 +27,7 @@ export class ThinkingComponent implements Component {
   private showMarker: boolean;
   private mode: ThinkingRenderMode;
   private expanded = false;
+  private followUp: ThinkingFollowUp | undefined;
   private readonly ui: TUI | undefined;
   private spinnerFrame = 0;
   private spinnerInterval: ReturnType<typeof setInterval> | undefined;
@@ -84,6 +86,12 @@ export class ThinkingComponent implements Component {
     this.stopSpinner();
   }
 
+  setFollowUp(followUp: ThinkingFollowUp | undefined): void {
+    this.followUp = followUp;
+    this.cachedWidth = undefined;
+    this.cachedLines = undefined;
+  }
+
   setExpanded(expanded: boolean): void {
     if (this.expanded === expanded) return;
     this.expanded = expanded;
@@ -98,23 +106,24 @@ export class ThinkingComponent implements Component {
       return this.cachedLines;
     }
 
-    const contentWidth = Math.max(1, width - MESSAGE_INDENT.length);
-    const contentLines = this.text.length > 0 ? this.textComponent.render(contentWidth) : [''];
-
     if (this.mode === 'live') {
-      const visibleLines =
-        contentLines.length > THINKING_PREVIEW_LINES
-          ? contentLines.slice(contentLines.length - THINKING_PREVIEW_LINES)
-          : contentLines;
       const spinner = chalk.hex(this.color)(
         `${BRAILLE_SPINNER_FRAMES[this.spinnerFrame] ?? BRAILLE_SPINNER_FRAMES[0]} `,
       );
-      return [
-        '',
-        spinner + chalk.hex(this.color)('思考中...'),
-        ...visibleLines.map((line) => MESSAGE_INDENT + line),
-      ];
+      return ['', spinner + chalk.hex(this.color)('思考中...')];
     }
+
+    if (!this.expanded) {
+      const marker = this.showMarker ? chalk.hex(this.color)(STATUS_BULLET) : MESSAGE_INDENT;
+      const summary = chalk.hex(this.color)(this.summaryLabel());
+      const lines = ['', marker + summary + chalk.dim(' · ctrl+o 查看')];
+      this.cachedWidth = width;
+      this.cachedLines = lines;
+      return lines;
+    }
+
+    const contentWidth = Math.max(1, width - MESSAGE_INDENT.length);
+    const contentLines = this.text.length > 0 ? this.textComponent.render(contentWidth) : [''];
 
     const rendered: string[] = [''];
     for (let i = 0; i < contentLines.length; i++) {
@@ -122,21 +131,17 @@ export class ThinkingComponent implements Component {
       rendered.push(p + contentLines[i]);
     }
 
-    if (this.expanded || contentLines.length <= THINKING_PREVIEW_LINES) {
-      this.cachedWidth = width;
-      this.cachedLines = rendered;
-      return rendered;
-    }
-
-    // Leading blank + first PREVIEW_LINES content lines + hint line.
-    const truncated = rendered.slice(0, 1 + THINKING_PREVIEW_LINES);
-    const remaining = contentLines.length - THINKING_PREVIEW_LINES;
-    truncated.push(
-      MESSAGE_INDENT + chalk.dim(`... (${String(remaining)} more lines, ctrl+o to expand)`),
-    );
     this.cachedWidth = width;
-    this.cachedLines = truncated;
-    return truncated;
+    this.cachedLines = rendered;
+    return rendered;
+  }
+
+  private summaryLabel(): string {
+    if (this.followUp?.kind === 'tools' && this.followUp.labels.length > 0) {
+      return `思考后：${summarizeToolActions(this.followUp.labels)}`;
+    }
+    if (this.followUp?.kind === 'answer') return '思考后：整理回答';
+    return '已思考';
   }
 
   private startSpinner(): void {

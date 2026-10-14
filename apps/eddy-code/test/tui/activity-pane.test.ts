@@ -1,9 +1,11 @@
 import { describe, expect, it, vi } from 'vitest';
 
 import { EddyTUI, type EddyTUIStartupInput, type TUIState } from '#/tui/eddy-tui';
+import type { StreamingUIController } from '#/tui/controllers/streaming-ui';
 
 interface ActivityDriver {
   state: TUIState;
+  readonly streamingUI: StreamingUIController;
   updateActivityPane(): void;
 }
 
@@ -84,6 +86,29 @@ describe('updateActivityPane terminal progress', () => {
 
     expect(setProgress).toHaveBeenCalledTimes(2);
     expect(setProgress).toHaveBeenLastCalledWith(false);
+  });
+
+  it('hides the pane loader while an activity run is live but keeps terminal progress', () => {
+    vi.useFakeTimers();
+    try {
+      const { driver, state, setProgress } = makeDriverWithTerminalProgress();
+      state.livePane = { ...state.livePane, mode: 'waiting' };
+      driver.updateActivityPane();
+      expect(state.activityContainer.children).toHaveLength(1);
+
+      driver.streamingUI.setTurnId('live');
+      driver.streamingUI.registerToolCall({ id: 'g1', name: 'Grep', args: {}, turnId: 'live', step: 1 });
+      driver.updateActivityPane();
+      expect(state.activityContainer.children).toHaveLength(0);
+      expect(setProgress).toHaveBeenLastCalledWith(true);
+
+      driver.streamingUI.finishActivity();
+      driver.updateActivityPane();
+      expect(state.activityContainer.children).toHaveLength(1);
+      expect(setProgress).toHaveBeenLastCalledWith(true);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it('keeps terminal progress active without showing a thinking spinner', () => {

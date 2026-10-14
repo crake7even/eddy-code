@@ -26,6 +26,7 @@ import type {
   PendingApproval,
 } from '#/tui/reverse-rpc/types';
 import type { ColorPalette } from '#/tui/theme/colors';
+import { toolApprovalQuestion } from '#/tui/utils/tool-labels';
 
 export interface ApprovalPanelResponse {
   readonly response: 'approved' | 'approved_for_session' | 'rejected' | 'cancelled';
@@ -163,23 +164,6 @@ function isDuplicateBriefBlock(block: DisplayBlock, description: string): boolea
   return normalizeApprovalText(blockLines.slice(1).join('\n')) === normalizedDescription;
 }
 
-function headerFor(toolName: string): string {
-  switch (toolName) {
-    case 'Bash':
-      return '是否执行此命令？';
-    case 'Write':
-      return '是否写入此文件？';
-    case 'Edit':
-      return '是否应用这些编辑？';
-    case 'TaskStop':
-      return '是否停止此任务？';
-    case 'ExitPlanMode':
-      return '是否按此计划构建？';
-    default:
-      return `是否批准 ${toolName}？`;
-  }
-}
-
 export class ApprovalPanelComponent extends Container implements Focusable {
   focused = false;
   private selectedIndex = 0;
@@ -314,11 +298,14 @@ export class ApprovalPanelComponent extends Container implements Focusable {
     const horizontalBar = borderColor('─'.repeat(width));
     const indent = (s: string): string => `  ${s}`;
 
-    const title = headerFor(data.tool_name);
+    const title = toolApprovalQuestion(data.tool_name);
     const lines: string[] = [
       horizontalBar,
       indent(`${borderColorBold('→')} ${borderColorBold(title)}`),
     ];
+    if (data.reason_text !== undefined) {
+      lines.push(indent(`  ${chalk.hex(this.colors.warning)(data.reason_text)}`));
+    }
 
     const dedupedBlocks = data.display.filter(
       (block) => !isDuplicateBriefBlock(block, data.description),

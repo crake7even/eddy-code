@@ -39,6 +39,7 @@ export interface LifecycleControllerHost {
   applyResolvedAutoTheme(resolved: ResolvedTheme): void;
   applyTheme(theme: Theme, resolved?: ResolvedTheme): void;
   updateActivityPane(): void;
+  hasLiveActivity(): boolean;
   setAppState(patch: Partial<AppState>): void;
   updateEditorBorderHighlight(text?: string): void;
 
@@ -251,17 +252,21 @@ export class LifecycleController {
 
   updateActivityPane(): void {
     const effectiveMode = this.resolveActivityPaneMode();
-    this.syncTerminalProgress(this.shouldShowTerminalProgress(effectiveMode));
+    const showsProgress = this.shouldShowTerminalProgress(effectiveMode);
+    this.syncTerminalProgress(showsProgress);
+    // A live activity run already shows its own spinner in the transcript header.
+    const visualMode: EffectiveActivityPaneMode =
+      showsProgress && this.host.hasLiveActivity() ? 'hidden' : effectiveMode;
 
-    if (effectiveMode === this.lastActivityMode) {
+    if (visualMode === this.lastActivityMode) {
       return;
     }
 
-    this.lastActivityMode = effectiveMode;
+    this.lastActivityMode = visualMode;
     const { state } = this.host;
     state.activityContainer.clear();
 
-    switch (effectiveMode) {
+    switch (visualMode) {
       case 'hidden':
         this.stopActivitySpinner();
         this.stopPulseWave();

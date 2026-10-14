@@ -6,8 +6,10 @@ import type { ApprovalController } from './controller';
 export function createApprovalRequestHandler(
   controller: ApprovalController,
   onResponse?: (request: ApprovalRequest, response: ApprovalResponse) => void,
+  onRequest?: (request: ApprovalRequest) => void,
 ): ApprovalHandler {
   return async (event): Promise<ApprovalResponse> => {
+    onRequest?.(event);
     try {
       const response = await controller.show(adaptApprovalRequest(event));
       onResponse?.(event, response);

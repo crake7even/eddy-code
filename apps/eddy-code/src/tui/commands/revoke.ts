@@ -1,6 +1,7 @@
 import type { Component } from '@earendil-works/pi-tui';
 
 import { WelcomeComponent } from '../components/chrome/welcome';
+import { ActivityGroupComponent } from '../components/messages/activity-group';
 import { AgentGroupComponent } from '../components/messages/agent-group';
 import { AssistantMessageComponent } from '../components/messages/assistant-message';
 import { BackgroundAgentStatusComponent } from '../components/messages/background-agent-status';
@@ -176,6 +177,7 @@ function isRevokeContextComponent(child: Component): boolean {
     child instanceof ToolCallComponent ||
     child instanceof AgentGroupComponent ||
     child instanceof ReadGroupComponent ||
+    child instanceof ActivityGroupComponent ||
     child instanceof SkillActivationComponent ||
     child instanceof BackgroundAgentStatusComponent
   );

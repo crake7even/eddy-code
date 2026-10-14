@@ -9,7 +9,7 @@
  * the edge and adding them would just churn the diff renderer.
  */
 
-import { Container } from '@earendil-works/pi-tui';
+import { Container, type Component } from '@earendil-works/pi-tui';
 
 export class GutterContainer extends Container {
   constructor(
@@ -24,10 +24,15 @@ export class GutterContainer extends Container {
     const lead = ' '.repeat(this.leftPad);
     const out: string[] = [];
     for (const child of this.children) {
+      if (!this.isChildVisible(child)) continue;
       for (const line of child.render(inner)) {
         out.push(lead + line);
       }
     }
     return out;
+  }
+
+  protected isChildVisible(_child: Component): boolean {
+    return true;
   }
 }

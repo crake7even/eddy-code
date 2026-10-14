@@ -30,6 +30,7 @@ function createMockHost(): SessionEventHost {
     endCompaction: vi.fn(),
     cancelCompaction: vi.fn(),
     markStepTruncated: vi.fn().mockReturnValue(0),
+    finishActivity: vi.fn(),
   } as unknown as StreamingUIController;
 
   const tasksBrowserController = {

@@ -15,6 +15,8 @@ import type { SessionEventHandler } from '#/tui/controllers/session-event-handle
 import type { StreamingUIController } from '#/tui/controllers/streaming-ui';
 import { AgentGroupComponent } from '#/tui/components/messages/agent-group';
 import { ReadGroupComponent } from '#/tui/components/messages/read-group';
+import { ThinkingComponent } from '#/tui/components/messages/thinking';
+import { TranscriptContainer } from '#/tui/components/chrome/transcript-container';
 
 vi.mock('#/tui/utils/open-url', () => ({ openUrl: vi.fn() }));
 
@@ -197,6 +199,13 @@ async function replayIntoDriver(
   return driver;
 }
 
+function renderPlain(driver: ReplayDriver): string {
+  return driver.state.transcriptContainer
+    .render(120)
+    .join('\n')
+    .replaceAll(/\u001B\[[0-9;]*m/g, '');
+}
+
 function backgroundTask(
   taskId: string,
   description: string,
@@ -277,6 +286,34 @@ describe('EddyTUI resume message replay', () => {
     expect(driver.streamingUI.hasPendingReadGroup()).toBe(false);
     expect(driver.streamingUI.getToolComponent('call_read_1')).toBeUndefined();
     expect(driver.streamingUI.getToolComponent('call_read_2')).toBeUndefined();
+  });
+
+  it('summarizes replayed thinking by the actions that followed it', async () => {
+    const replay: AgentReplayRecord[] = [
+      message('user', [{ type: 'text', text: 'show my config' }]),
+      message('assistant', [{ type: 'think', think: 'The user asks about config.' }], {
+        toolCalls: [
+          toolCall('call_bash', 'Bash', { command: 'ls' }),
+          toolCall('call_read', 'Read', { file_path: '/tmp/proj-a/a.md' }),
+        ],
+      }),
+      message('tool', [{ type: 'text', text: 'a.md' }], { toolCallId: 'call_bash' }),
+      message('tool', [{ type: 'text', text: 'content' }], { toolCallId: 'call_read' }),
+      message('assistant', [
+        { type: 'think', think: 'Summarize it.' },
+        { type: 'text', text: 'Here it is.' },
+      ]),
+    ];
+
+    const driver = await replayIntoDriver(replay);
+    const lines = driver.state.transcriptContainer.children
+      .filter((child) => child instanceof ThinkingComponent)
+      .map((child) => child.render(80).join('').replaceAll(/\u001B\[[0-9;]*m/g, ''));
+
+    expect(lines).toEqual([
+      '● 思考后：运行命令、读取文件 · ctrl+o 查看',
+      '● 思考后：整理回答 · ctrl+o 查看',
+    ]);
   });
 
   it('hydrates todo and background snapshot state from resumed main agent', async () => {
@@ -490,8 +527,148 @@ describe('EddyTUI resume message replay', () => {
     expect(transcript).toContain('权限模式： auto');
     expect(transcript).toContain('YES 模式：开启');
     expect(transcript).toContain('YES 模式：关闭');
-    expect(transcript).toContain('已批准（当前会话）: run command');
+    expect(transcript).toContain('已批准（当前会话）：运行命令');
+    expect(transcript).not.toContain('run command');
     expect(transcript).toContain('Plan mode: OFF');
+  });
+
+  it('places a replayed approval notice right under its own tool call', async () => {
+    const driver = await replayIntoDriver([
+      message('user', [{ type: 'text', text: 'look around' }]),
+      message('assistant', [], {
+        toolCalls: [
+          toolCall('call_bash', 'Bash', { command: 'ls -la ~/.eddy-code/' }),
+          toolCall('call_read', 'Read', { path: '/tmp/proj-a/AGENTS.md' }),
+        ],
+      }),
+      {
+        type: 'approval_result',
+        record: {
+          turnId: 0,
+          toolCallId: 'call_bash',
+          action: 'Running: ls -la ~/.eddy-code/',
+          toolName: 'Bash',
+          result: { decision: 'approved' },
+        },
+      },
+      message('tool', [{ type: 'text', text: 'total 0' }], { toolCallId: 'call_bash' }),
+      message('tool', [{ type: 'text', text: 'rules' }], { toolCallId: 'call_read' }),
+    ]);
+
+    (driver.state.transcriptContainer as TranscriptContainer).setShowCollapsed(true);
+    const transcript = renderPlain(driver);
+    const notice = transcript.indexOf('已批准：运行命令 ls -la ~/.eddy-code/');
+    expect(notice).toBeGreaterThan(transcript.indexOf('Bash'));
+    expect(notice).toBeLessThan(transcript.indexOf('Read'));
+    expect(transcript).not.toContain('Running:');
+  });
+
+  it('collapses a finished run of activity into one line before the answer', async () => {
+    const driver = await replayIntoDriver([
+      message('user', [{ type: 'text', text: 'show my config' }]),
+      message('assistant', [{ type: 'think', think: 'Look at the files.' }], {
+        toolCalls: [
+          toolCall('call_bash', 'Bash', { command: 'ls -la' }),
+          toolCall('call_read', 'Read', { path: '/tmp/proj-a/AGENTS.md' }),
+        ],
+      }),
+      {
+        type: 'approval_result',
+        record: {
+          turnId: 0,
+          toolCallId: 'call_bash',
+          action: 'Running: ls -la',
+          toolName: 'Bash',
+          result: { decision: 'approved' },
+        },
+      },
+      message('tool', [{ type: 'text', text: 'total 0' }], { toolCallId: 'call_bash' }),
+      message('tool', [{ type: 'text', text: 'rules' }], { toolCallId: 'call_read' }),
+      message('assistant', [{ type: 'text', text: 'Your config lives in ~/.eddy-code.' }]),
+    ]);
+
+    const collapsed = renderPlain(driver);
+    expect(collapsed).toContain('已使用 2 个工具 ›');
+    expect(collapsed).toContain('Your config lives in ~/.eddy-code.');
+    expect(collapsed).not.toContain('Bash');
+    expect(collapsed).not.toContain('已批准');
+    expect(collapsed).not.toContain('思考');
+
+    (driver.state.transcriptContainer as TranscriptContainer).setShowCollapsed(true);
+    const expanded = renderPlain(driver);
+    expect(expanded).toContain('Bash');
+    expect(expanded).toContain('已批准：运行命令 ls -la');
+  });
+
+  it('splits activity runs around intermediate assistant text', async () => {
+    const driver = await replayIntoDriver([
+      message('user', [{ type: 'text', text: 'check two things' }]),
+      message('assistant', [], { toolCalls: [toolCall('call_a', 'Bash', { command: 'pwd' })] }),
+      message('tool', [{ type: 'text', text: '/tmp' }], { toolCallId: 'call_a' }),
+      message('assistant', [{ type: 'text', text: 'First done, now the second.' }], {
+        toolCalls: [toolCall('call_b', 'Bash', { command: 'ls' })],
+      }),
+      message('tool', [{ type: 'text', text: 'a' }], { toolCallId: 'call_b' }),
+      message('assistant', [{ type: 'text', text: 'All done.' }]),
+    ]);
+
+    const transcript = renderPlain(driver);
+    const first = transcript.indexOf('已使用 1 个工具 ›');
+    const middle = transcript.indexOf('First done, now the second.');
+    const second = transcript.indexOf('已使用 1 个工具 ›', first + 1);
+    expect(first).toBeGreaterThanOrEqual(0);
+    expect(middle).toBeGreaterThan(first);
+    expect(second).toBeGreaterThan(middle);
+    expect(transcript.indexOf('All done.')).toBeGreaterThan(second);
+  });
+
+  it('updates the live activity line as the agent works', async () => {
+    const driver = await replayIntoDriver([]);
+    const ui = driver.streamingUI;
+    ui.setTurnId('live');
+    ui.onThinkingUpdate('planning');
+    expect(renderPlain(driver)).toContain('思考中…');
+
+    ui.onThinkingEnd();
+    ui.registerToolCall({ id: 'b1', name: 'Bash', args: { command: 'ls -la' }, turnId: 'live', step: 1 });
+    expect(renderPlain(driver)).toContain('正在运行命令 ls -la…');
+    expect(renderPlain(driver)).not.toContain('planning');
+
+    ui.noteActivityApprovalPending('Bash', { command: 'ls -la' });
+    expect(renderPlain(driver)).toContain('等待你批准：运行命令 ls -la');
+    ui.noteActivityApprovalDone();
+    expect(renderPlain(driver)).toContain('正在运行命令 ls -la…');
+
+    ui.completeToolResult('b1', { tool_call_id: 'b1', output: 'boom', is_error: true });
+    ui.appendAssistantDelta('Done.');
+    ui.flushNow();
+    const finished = renderPlain(driver);
+    expect(finished).toContain('已使用 1 个工具 › · 1 个失败');
+    expect(finished).toContain('Done.');
+  });
+
+  it('refreshes the live label once streamed tool args arrive', async () => {
+    const driver = await replayIntoDriver([]);
+    const ui = driver.streamingUI;
+    ui.setTurnId('live');
+    ui.registerToolCall({ id: 'g1', name: 'Grep', args: {}, turnId: 'live', step: 1 });
+    expect(renderPlain(driver)).toContain('正在查找文件…');
+
+    ui.registerToolCall({ id: 'g1', name: 'Grep', args: { pattern: 'contact' }, turnId: 'live', step: 1 });
+    expect(renderPlain(driver)).toContain('正在查找文件 contact…');
+  });
+
+  it('hides a thinking-only run without a summary line once text follows', async () => {
+    const driver = await replayIntoDriver([]);
+    const ui = driver.streamingUI;
+    ui.setTurnId('live');
+    ui.onThinkingUpdate('planning');
+    ui.onThinkingEnd();
+    ui.appendAssistantDelta('Hello.');
+    ui.flushNow();
+    const rendered = renderPlain(driver);
+    expect(rendered).not.toContain('已思考 ›');
+    expect(rendered).toContain('Hello.');
   });
 
   it('keeps only the final approved plan card after rejected plan reviews', async () => {

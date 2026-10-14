@@ -6,6 +6,7 @@ import {
 
 import { FooterComponent } from './components/chrome/footer';
 import { GutterContainer } from './components/chrome/gutter-container';
+import { TranscriptContainer } from './components/chrome/transcript-container';
 import type { MoonLoader, SpinnerStyle } from './components/chrome/moon-loader';
 import type { PulseWaveLoader } from './components/chrome/pulse-wave-loader';
 import { TodoPanelComponent } from './components/chrome/todo-panel';
@@ -87,7 +88,7 @@ export function createTUIState(options: EddyTUIOptions): TUIState {
     }
   };
 
-  const transcriptContainer = new GutterContainer(CHROME_GUTTER, CHROME_GUTTER);
+  const transcriptContainer = new TranscriptContainer(CHROME_GUTTER, CHROME_GUTTER);
   const activityContainer = new GutterContainer(CHROME_GUTTER, CHROME_GUTTER);
   const todoPanelContainer = new GutterContainer(CHROME_GUTTER, CHROME_GUTTER);
   const todoPanel = new TodoPanelComponent(theme.colors);

@@ -146,7 +146,14 @@ export interface TranscriptEntry {
   skillName?: string;
   skillArgs?: string;
   skillTrigger?: 'user-slash' | 'model-tool' | 'nested-skill';
+  /** For thinking entries: what the model did right after thinking. */
+  thinkingFollowUp?: ThinkingFollowUp;
 }
+
+/** Tool action labels that followed a thinking block, or a plain answer. */
+export type ThinkingFollowUp =
+  | { readonly kind: 'tools'; readonly labels: readonly string[] }
+  | { readonly kind: 'answer' };
 
 export type LivePaneMode =
   | 'idle'

@@ -26,6 +26,12 @@ import type { StreamingUIController } from './streaming-ui';
 import type { TranscriptEntry, LoginProgressSpinnerHandle } from '../types';
 import type { TUIState } from '../tui-state';
 import { ImageAttachmentStore, type ImageAttachment } from '../utils/image-attachment-store';
+import {
+  TranscriptContainer,
+  collapseInTranscript,
+  isCollapsedInTranscript,
+} from '../components/chrome/transcript-container';
+import { approvalNoticeText } from '../utils/approval-notice';
 import { nextTranscriptId } from '../utils/transcript-id';
 import { isExpandable, isPlanExpandable } from '../utils/component-capabilities';
 import { CommittedTranscriptComponent } from '../components/transcript/committed-transcript';
@@ -106,7 +112,10 @@ export class TranscriptController {
     }
 
     for (const { component, entry } of toCommit) {
-      this.committedComponent.appendEntry(entry, state.theme.colors);
+      // Hidden activity members are summarized by their run header.
+      if (!isCollapsedInTranscript(container, component)) {
+        this.committedComponent.appendEntry(entry, state.theme.colors);
+      }
       container.removeChild(component);
       this.liveComponentToEntry.delete(component);
     }
@@ -159,6 +168,7 @@ export class TranscriptController {
       }
       case 'thinking': {
         const thinking = new ThinkingComponent(entry.content, state.theme.colors, true);
+        thinking.setFollowUp(entry.thinkingFollowUp);
         if (state.toolOutputExpanded) thinking.setExpanded(true);
         return thinking;
       }
@@ -222,31 +232,52 @@ export class TranscriptController {
     }
   }
 
-  appendApprovalEntry(request: ApprovalRequest, response: ApprovalResponse): void {
+  appendApprovalEntry(
+    request: ApprovalRequest,
+    response: ApprovalResponse,
+    anchor?: Component,
+  ): void {
     if (request.toolName === 'ExitPlanMode' || request.display.kind === 'plan_review') return;
-    const parts: string[] = [];
-    switch (response.decision) {
-      case 'approved':
-        parts.push(response.scope === 'session' ? '已批准（当前会话）' : '已批准');
-        break;
-      case 'rejected':
-        parts.push('已拒绝');
-        break;
-      case 'cancelled':
-        parts.push('已取消');
-        break;
-    }
-    parts.push(`: ${request.action}`);
-    if (response.feedback !== undefined && response.feedback.length > 0) {
-      parts.push(` — "${response.feedback}"`);
-    }
-    this.appendEntry({
-      id: nextTranscriptId(),
-      kind: 'status',
-      renderMode: 'notice',
-      content: parts.join(''),
-    });
+    this.appendEntryAfter(
+      {
+        id: nextTranscriptId(),
+        kind: 'status',
+        renderMode: 'notice',
+        content: approvalNoticeText(request.toolName, request.display, response),
+      },
+      anchor,
+    );
   }
+
+  /**
+   * Insert an entry right after `anchor` (e.g. the tool call an approval
+   * belongs to) so it stays next to it even if later blocks were already
+   * added. Falls back to appending when the anchor is not a live child.
+   */
+  appendEntryAfter(entry: TranscriptEntry, anchor: Component | undefined): void {
+    const children = this.host.state.transcriptContainer.children;
+    const index = anchor === undefined ? -1 : children.indexOf(anchor);
+    if (anchor === undefined || index < 0) {
+      this.appendEntry(entry);
+      return;
+    }
+    const entries = this.host.state.transcriptEntries;
+    const anchorEntry = this.liveComponentToEntry.get(anchor);
+    const entryIndex = anchorEntry === undefined ? -1 : entries.indexOf(anchorEntry);
+    if (entryIndex < 0) entries.push(entry);
+    else entries.splice(entryIndex + 1, 0, entry);
+    const component = this.createComponent(entry);
+    if (component) {
+      this.liveComponentToEntry.set(component, entry);
+      children.splice(index + 1, 0, component);
+      // Notices for a hidden activity member stay hidden with it.
+      if (isCollapsedInTranscript(this.host.state.transcriptContainer, anchor)) {
+        collapseInTranscript(this.host.state.transcriptContainer, component);
+      }
+      this.host.state.ui.requestRender();
+    }
+  }
+
 
   renderWelcome(): void {
     const { state } = this.host;
@@ -281,6 +312,7 @@ export class TranscriptController {
     streamingUI.disposeActiveCompactionBlock();
     streamingUI.resetLiveText();
     streamingUI.resetToolUi();
+    streamingUI.discardActivity();
     this.welcomeComponent?.stopBreathing();
     this.welcomeComponent = undefined;
     this.committedComponent = undefined;
@@ -352,6 +384,9 @@ export class TranscriptController {
       }
     };
     walk(state.transcriptContainer.children);
+    if (state.transcriptContainer instanceof TranscriptContainer) {
+      state.transcriptContainer.setShowCollapsed(state.toolOutputExpanded);
+    }
     state.ui.requestRender();
   }
 

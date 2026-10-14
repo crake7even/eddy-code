@@ -92,6 +92,40 @@ describe('ApprovalPanelComponent', () => {
     expect(out).not.toContain('⚠');
   });
 
+  it('asks in plain words and explains why it is asking', () => {
+    const pending: PendingApproval = {
+      data: {
+        id: 'approval_env',
+        tool_call_id: 'tool_env',
+        tool_name: 'Read',
+        action: 'Reading /tmp/proj/.env',
+        description: '',
+        reason_text: '这个文件可能含有密码或密钥。',
+        display: [{ type: 'file_op', operation: 'read', path: '/tmp/proj/.env' }],
+        choices: [{ label: '批准一次', response: 'approved' }],
+      },
+    };
+    const out = strip(new ApprovalPanelComponent(pending, () => {}, COLORS).render(80).join('\n'));
+    expect(out).toContain('要读取这个文件，可以吗？');
+    expect(out).toContain('这个文件可能含有密码或密钥。');
+  });
+
+  it.each([
+    ['FetchURL', '要打开这个网址，可以吗？'],
+    ['WebSearch', '要上网搜索，可以吗？'],
+    ['mcp__github__create_issue', '要使用工具 create_issue，可以吗？'],
+  ])('uses a plain-language header for %s', (toolName, header) => {
+    const pending = makePending();
+    const out = strip(
+      new ApprovalPanelComponent(
+        { data: { ...pending.data, tool_name: toolName } },
+        () => {},
+        COLORS,
+      ).render(80).join('\n'),
+    );
+    expect(out).toContain(header);
+  });
+
   it('numeric shortcuts still drive approval actions', () => {
     const { dialog, responses } = makeDialog();
     dialog.handleInput('2');

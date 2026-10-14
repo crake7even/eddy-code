@@ -19,6 +19,7 @@ import type {
 } from '../types';
 import { formatErrorMessage, isTodoItemShape } from '../utils/event-payload';
 import { formatBackgroundAgentTranscript } from '../utils/background-agent-status';
+import { approvalNoticeText } from '../utils/approval-notice';
 import { formatBackgroundTaskTranscript } from '../utils/background-task-status';
 import {
   appStateFromResumeAgent,
@@ -50,6 +51,7 @@ export interface SessionReplayHost {
   setAppState(patch: Partial<AppState>): void;
   showError(msg: string): void;
   appendTranscriptEntry(entry: TranscriptEntry): void;
+  appendTranscriptEntryAfterToolCall(entry: TranscriptEntry, toolCallId: string): void;
 }
 
 export class SessionReplayRenderer {
@@ -418,24 +420,12 @@ export class SessionReplayRenderer {
       return;
     }
 
-    const { result } = record;
-    const parts: string[] = [];
-    switch (result.decision) {
-      case 'approved':
-        parts.push(result.scope === 'session' ? '已批准（当前会话）' : '已批准');
-        break;
-      case 'rejected':
-        parts.push('已拒绝');
-        break;
-      case 'cancelled':
-        parts.push('已取消');
-        break;
-    }
-    parts.push(`: ${record.action}`);
-    if (result.feedback !== undefined && result.feedback.length > 0) {
-      parts.push(` — "${result.feedback}"`);
-    }
-    this.host.appendTranscriptEntry(replayEntry(context, 'status', parts.join(''), 'notice'));
+    const args = context.toolCalls.get(record.toolCallId)?.args;
+    const text = approvalNoticeText(record.toolName, args, record.result);
+    this.host.appendTranscriptEntryAfterToolCall(
+      replayEntry(context, 'status', text, 'notice'),
+      record.toolCallId,
+    );
   }
 
   private renderPlanReviewResult(

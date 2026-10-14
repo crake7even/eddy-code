@@ -36,10 +36,42 @@ describe('approval adapter', () => {
     });
     expect(adapted.choices.map((choice) => choice.label)).toEqual([
       '批准一次',
-      '批准（当前会话）',
+      '本会话都允许这类操作',
       '拒绝',
       '拒绝并反馈',
     ]);
+  });
+
+  it.each([
+    ['FetchURL', '本会话都允许打开这个网站'],
+    ['WebSearch', '本会话都允许搜索'],
+    ['Bash', '本会话都允许这条命令'],
+    ['Read', '本会话都允许操作这个文件'],
+  ])('labels the session choice for %s by its real scope', (toolName, label) => {
+    const adapted = adaptApprovalRequest({
+      toolCallId: 'tc-scope',
+      toolName,
+      action: 'x',
+      display: { kind: 'generic', summary: 'x' },
+    });
+    expect(adapted.choices[1]).toMatchObject({ label, response: 'approved_for_session' });
+  });
+
+  it.each([
+    [{ sensitive_path: true }, '这个文件可能含有密码或密钥。'],
+    [{ git_control_path: true }, '这是 git 的内部文件，改错可能弄坏代码仓库。'],
+    [{ cwd_outside: true }, '这个文件在当前项目目录之外。'],
+    [{ has_options: false }, undefined],
+    [undefined, undefined],
+  ])('explains the policy reason %j in plain words', (reason, text) => {
+    const adapted = adaptApprovalRequest({
+      toolCallId: 'tc-reason',
+      toolName: 'Read',
+      action: 'Reading /tmp/.env',
+      display: { kind: 'file_io', operation: 'read', path: '/tmp/.env' },
+      reason,
+    });
+    expect(adapted.reason_text).toBe(text);
   });
 
   it('emits only a diff block for Edit — no separate file_op title row', () => {

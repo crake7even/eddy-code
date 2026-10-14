@@ -675,8 +675,24 @@ export class EddyTUI implements TranscriptControllerHost, LifecycleControllerHos
     this.transcriptController.appendEntry(entry);
   }
 
+  noteApprovalPending(request: ApprovalRequest): void {
+    this.streamingUI.noteActivityApprovalPending(request.toolName, request.display);
+  }
+
   appendApprovalTranscriptEntry(request: ApprovalRequest, response: ApprovalResponse): void {
-    this.transcriptController.appendApprovalEntry(request, response);
+    this.streamingUI.noteActivityApprovalDone();
+    this.transcriptController.appendApprovalEntry(
+      request,
+      response,
+      this.streamingUI.getToolComponent(request.toolCallId),
+    );
+  }
+
+  appendTranscriptEntryAfterToolCall(entry: TranscriptEntry, toolCallId: string): void {
+    this.transcriptController.appendEntryAfter(
+      entry,
+      this.streamingUI.getToolComponent(toolCallId),
+    );
   }
 
   private renderWelcome(): void {
@@ -706,6 +722,10 @@ export class EddyTUI implements TranscriptControllerHost, LifecycleControllerHos
 
   updateActivityPane(): void {
     this.lifecycleController.updateActivityPane();
+  }
+
+  hasLiveActivity(): boolean {
+    return this.streamingUI.hasLiveActivity();
   }
 
   updateQueueDisplay(): void {

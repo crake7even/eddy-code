@@ -2,10 +2,11 @@ import type { ApprovalRequest, ApprovalResponse, ToolInputDisplay } from '@eddy-
 
 import type { ApprovalPanelResponse } from '#/tui/components/dialogs/approval-panel';
 import type { ApprovalPanelChoice, ApprovalPanelData, DisplayBlock } from '#/tui/reverse-rpc/types';
+import { sessionApprovalLabel } from '#/tui/utils/tool-labels';
 
 const DEFAULT_APPROVAL_CHOICES: ApprovalPanelChoice[] = [
   { label: '批准一次', response: 'approved' },
-  { label: '批准（当前会话）', response: 'approved_for_session' },
+  { label: '本会话都允许这类操作', response: 'approved_for_session' },
   { label: '拒绝', response: 'rejected' },
   { label: '拒绝并反馈', response: 'rejected', requires_feedback: true },
 ];
@@ -23,6 +24,7 @@ export function adaptApprovalRequest(event: ApprovalRequest): ApprovalPanelData 
     tool_name: event.toolName,
     action: event.action,
     description: resolved.description,
+    reason_text: describeApprovalReason(event.reason),
     display: resolved.blocks,
     choices: adaptChoices(event.toolName, event.display),
   };
@@ -336,7 +338,20 @@ function adaptChoices(toolName: string, display: ToolInputDisplay): ApprovalPane
     return adaptPlanReviewChoices(display);
   }
 
-  return DEFAULT_APPROVAL_CHOICES.map((choice) => cloneChoice(choice));
+  return DEFAULT_APPROVAL_CHOICES.map((choice) =>
+    choice.response === 'approved_for_session'
+      ? { ...cloneChoice(choice), label: sessionApprovalLabel(toolName) }
+      : cloneChoice(choice),
+  );
+}
+
+/** Explain in plain words why a permission policy asked. */
+function describeApprovalReason(reason: ApprovalRequest['reason']): string | undefined {
+  if (reason === undefined) return undefined;
+  if (reason['sensitive_path'] === true) return '这个文件可能含有密码或密钥。';
+  if (reason['git_control_path'] === true) return '这是 git 的内部文件，改错可能弄坏代码仓库。';
+  if (reason['cwd_outside'] === true) return '这个文件在当前项目目录之外。';
+  return undefined;
 }
 
 function adaptPlanReviewChoices(display: ToolInputDisplay): ApprovalPanelChoice[] {

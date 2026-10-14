@@ -1,16 +1,21 @@
+import type { Component } from '@earendil-works/pi-tui';
 import type { Session } from '@eddy-code/sdk';
 import { PRODUCT_NAME } from '#/constant/app';
 
+import { collapseInTranscript } from '../components/chrome/transcript-container';
+import { ActivityGroupComponent } from '../components/messages/activity-group';
 import { AgentGroupComponent } from '../components/messages/agent-group';
 import { AssistantMessageComponent } from '../components/messages/assistant-message';
 import { CompactionComponent } from '../components/dialogs/compaction';
 import { ReadGroupComponent, parseReadGroupOutput } from '../components/messages/read-group';
 import { ThinkingComponent } from '../components/messages/thinking';
-import { ToolCallComponent } from '../components/messages/tool-call';
+import { ToolCallComponent, extractKeyArgument } from '../components/messages/tool-call';
 import { STREAMING_UI_FLUSH_MS } from '../constant/streaming';
 import { hasDispose } from '../utils/component-capabilities';
 import { appendStreamingArgsPreview, parseStreamingArgs } from '../utils/event-payload';
 import { notifyTerminalOnce } from '../utils/terminal-notification';
+import { describeToolAction } from '../utils/approval-notice';
+import { toolActionLabel } from '../utils/tool-labels';
 import { nextTranscriptId } from '../utils/transcript-id';
 import type { TodoItem } from '../components/chrome/todo-panel';
 import type { TranscriptController } from './transcript-controller';
@@ -18,6 +23,7 @@ import type {
   AppState,
   LivePaneState,
   QueuedMessage,
+  ThinkingFollowUp,
   ToolCallBlockData,
   ToolResultBlockData,
   TranscriptEntry,
@@ -59,6 +65,17 @@ export class StreamingUIController {
   private _compactionEntry: TranscriptEntry | undefined = undefined;
   private _streamingBlock: { component: AssistantMessageComponent; entry: TranscriptEntry } | null = null;
   private _activeThinkingComponent: ThinkingComponent | undefined = undefined;
+  // Most recent thinking block whose follow-up is still open; its one-line
+  // summary reflects the tool calls or answer after it. Closed once a tool
+  // result arrives, since the next LLM step starts after results.
+  private _lastThinking: { component: ThinkingComponent; entry: TranscriptEntry } | undefined;
+  // Header of the current run of thinking/tool activity. Members are hidden
+  // behind it in the transcript; text output or turn end finishes the run.
+  private _activity: { header: ActivityGroupComponent; entry: TranscriptEntry } | null = null;
+  private _activityLabelBeforeApproval: string | undefined;
+  // Id of the most recently started tool in the current activity run; its live
+  // label follows the args as they stream in.
+  private _activityToolCallId: string | undefined;
   private _activeCompactionBlock: CompactionComponent | undefined = undefined;
   private _activeToolCalls = new Map<string, ToolCallBlockData>();
   private _streamingToolCallArguments = new Map<
@@ -289,6 +306,7 @@ export class StreamingUIController {
         this.onToolCallStart(toolCall);
       }
     }
+    this.refreshActivityToolLabel(toolCall);
     return existing === undefined;
   }
 
@@ -340,6 +358,7 @@ export class StreamingUIController {
 
   /** Tears down replay-specific state after session history has been rendered. */
   cleanupAfterReplay(completedToolCallIds: Set<string>): void {
+    this.finishActivity();
     this._activeToolCalls.clear();
     for (const toolCallId of completedToolCallIds) {
       this._pendingToolComponents.delete(toolCallId);
@@ -514,6 +533,8 @@ export class StreamingUIController {
     this.finalizeLiveTextBuffers('idle');
     this.resetToolCallState();
     this._currentTurnId = undefined;
+    this._lastThinking = undefined;
+    this.finishActivity();
 
     const next = this.host.shiftQueuedMessage();
     if (next !== undefined) {
@@ -540,6 +561,8 @@ export class StreamingUIController {
   // ---------------------------------------------------------------------------
 
   onStreamingTextStart(): void {
+    this.noteThinkingAnswer();
+    this.finishActivity();
     const { state } = this.host;
     this._pendingAgentGroup = null;
     this._pendingReadGroup = null;
@@ -602,11 +625,13 @@ export class StreamingUIController {
       };
       this._activeThinkingComponent = component;
       this._thinkingEntry = entry;
+      this._lastThinking = { component, entry };
       this.host.pushTranscriptEntry(entry);
       this.host.transcriptController.registerLiveComponent(component, entry);
       this.host.transcriptController.markPending(component);
       if (state.toolOutputExpanded) component.setExpanded(true);
-      state.transcriptContainer.addChild(component);
+      this.addActivityChild(component);
+      this.setActivityLabel('思考中…');
     } else {
       this._activeThinkingComponent.setText(fullText);
       if (this._thinkingEntry !== undefined) {
@@ -614,6 +639,128 @@ export class StreamingUIController {
       }
     }
     state.ui.requestRender();
+  }
+
+  /** Add a thinking/tool component to the transcript, hidden behind the run header. */
+  private addActivityChild(component: Component): void {
+    const { state } = this.host;
+    this.ensureActivity();
+    state.transcriptContainer.addChild(component);
+    collapseInTranscript(state.transcriptContainer, component);
+  }
+
+  private ensureActivity(): ActivityGroupComponent {
+    if (this._activity !== null) return this._activity.header;
+    const { state, transcriptController } = this.host;
+    const header = new ActivityGroupComponent(state.theme.colors, state.ui);
+    if (state.toolOutputExpanded) header.setExpanded(true);
+    const entry: TranscriptEntry = {
+      id: nextTranscriptId(),
+      kind: 'status',
+      turnId: this._currentTurnId,
+      renderMode: 'notice',
+      content: '',
+    };
+    this.host.pushTranscriptEntry(entry);
+    transcriptController.registerLiveComponent(header, entry);
+    transcriptController.markPending(header);
+    state.transcriptContainer.addChild(header);
+    this._activity = { header, entry };
+    this.host.updateActivityPane();
+    return header;
+  }
+
+  private setActivityLabel(label: string): void {
+    this._activity?.header.setLiveLabel(label);
+    this.host.state.ui.requestRender();
+  }
+
+  private noteActivityToolStart(toolCall: ToolCallBlockData): void {
+    if (toolCall.name === 'ExitPlanMode') return;
+    // Tools without their own component (e.g. AskUserQuestion) still open a run.
+    this.ensureActivity().addTool();
+    this._activityToolCallId = toolCall.id;
+    this.setActivityLabel(activityToolLabel(toolCall, this.host.state.appState.workDir));
+  }
+
+  /** Re-derive the live label when the latest tool's streamed args change (e.g. the pattern arrives after the start). */
+  private refreshActivityToolLabel(toolCall: ToolCallBlockData): void {
+    const activity = this._activity;
+    if (activity === null || toolCall.id !== this._activityToolCallId) return;
+    const label = activityToolLabel(toolCall, this.host.state.appState.workDir);
+    if (this._activityLabelBeforeApproval !== undefined) {
+      this._activityLabelBeforeApproval = label;
+      return;
+    }
+    if (label !== activity.header.currentLabel) this.setActivityLabel(label);
+  }
+
+  /** Whether an activity run (thinking/tool header) is currently live. */
+  hasLiveActivity(): boolean {
+    return this._activity !== null;
+  }
+
+  /** Show that the run is waiting on the user's approval for a tool call. */
+  noteActivityApprovalPending(toolName: string, fields: object | undefined): void {
+    const header = this._activity?.header;
+    if (header === undefined) return;
+    this._activityLabelBeforeApproval ??= header.currentLabel;
+    this.setActivityLabel(`等待你批准：${describeToolAction(toolName, fields)}`);
+  }
+
+  noteActivityApprovalDone(): void {
+    const previous = this._activityLabelBeforeApproval;
+    this._activityLabelBeforeApproval = undefined;
+    if (previous !== undefined) this.setActivityLabel(previous);
+  }
+
+  /** Drop the current run without finalizing it (its header was cleared away). */
+  discardActivity(): void {
+    this._activity?.header.dispose();
+    this._activity = null;
+    this._activityToolCallId = undefined;
+    this._activityLabelBeforeApproval = undefined;
+    this.host.updateActivityPane();
+  }
+
+  finishActivity(): void {
+    const activity = this._activity;
+    if (activity === null) return;
+    this._activity = null;
+    this._activityToolCallId = undefined;
+    this._activityLabelBeforeApproval = undefined;
+    activity.header.finish();
+    // A thinking-only run has nothing worth a summary line; keep it behind ctrl+o.
+    if (!activity.header.hasTools) {
+      collapseInTranscript(this.host.state.transcriptContainer, activity.header);
+    }
+    activity.entry.content = activity.header.summary();
+    this.host.transcriptController.unmarkPending(activity.header);
+    this.host.updateActivityPane();
+    this.host.state.ui.requestRender();
+  }
+
+  private noteThinkingToolCall(toolName: string): void {
+    const last = this._lastThinking;
+    if (last === undefined) return;
+    const current = last.entry.thinkingFollowUp;
+    const labels = current?.kind === 'tools' ? current.labels : [];
+    this.setThinkingFollowUp(last, { kind: 'tools', labels: [...labels, toolActionLabel(toolName)] });
+  }
+
+  private noteThinkingAnswer(): void {
+    const last = this._lastThinking;
+    if (last === undefined || last.entry.thinkingFollowUp !== undefined) return;
+    this.setThinkingFollowUp(last, { kind: 'answer' });
+  }
+
+  private setThinkingFollowUp(
+    target: { component: ThinkingComponent; entry: TranscriptEntry },
+    followUp: ThinkingFollowUp,
+  ): void {
+    target.entry.thinkingFollowUp = followUp;
+    target.component.setFollowUp(followUp);
+    this.host.state.ui.requestRender();
   }
 
   onThinkingEnd(): void {
@@ -627,6 +774,8 @@ export class StreamingUIController {
   }
 
   onToolCallStart(toolCall: ToolCallBlockData): void {
+    this.noteThinkingToolCall(toolCall.name);
+    this.noteActivityToolStart(toolCall);
     if (toolCall.name === 'AskUserQuestion') return;
     if (toolCall.name === 'ReadGroup') {
       this.startReadGroupToolCall(toolCall);
@@ -664,7 +813,9 @@ export class StreamingUIController {
     let handled = this.tryAttachAgentToolCall(toolCall, tc);
     if (!handled) handled = this.tryAttachReadToolCall(toolCall, tc);
     if (!handled) {
-      state.transcriptContainer.addChild(tc);
+      // The plan card is content the user reviews, so it stays visible.
+      if (toolCall.name === 'ExitPlanMode') state.transcriptContainer.addChild(tc);
+      else this.addActivityChild(tc);
       state.ui.requestRender();
     }
 
@@ -698,11 +849,13 @@ export class StreamingUIController {
     this.host.pushTranscriptEntry(entry);
     transcriptController.registerLiveComponent(rgc, entry);
     transcriptController.markPending(rgc);
-    state.transcriptContainer.addChild(rgc);
+    this.addActivityChild(rgc);
     state.ui.requestRender();
   }
 
   onToolCallEnd(toolCallId: string, result: ToolResultBlockData): void {
+    this._lastThinking = undefined;
+    if (result.is_error === true) this._activity?.header.addFailure();
     const { state } = this.host;
 
     const rgc = this._pendingReadGroupComponents.get(toolCallId);
@@ -746,7 +899,7 @@ export class StreamingUIController {
       );
       if (state.toolOutputExpanded) completed.setExpanded(true);
       if (state.planExpanded) completed.setPlanExpanded(true);
-      state.transcriptContainer.addChild(completed);
+      this.addActivityChild(completed);
       state.ui.requestRender();
     }
   }
@@ -845,6 +998,7 @@ export class StreamingUIController {
     } else if (toolCall.name !== 'Agent') {
       this.onToolCallStart(toolCall);
     }
+    this.refreshActivityToolLabel(toolCall);
   }
 
   private tryAttachAgentToolCall(toolCall: ToolCallBlockData, tc: ToolCallComponent): boolean {
@@ -865,7 +1019,7 @@ export class StreamingUIController {
     const cur = this._pendingAgentGroup;
     if (cur === null) {
       this._pendingAgentGroup = { step, turnId, solo: tc };
-      state.transcriptContainer.addChild(tc);
+      this.addActivityChild(tc);
       state.ui.requestRender();
       return true;
     }
@@ -878,7 +1032,7 @@ export class StreamingUIController {
     const solo = cur.solo;
     if (solo === undefined) {
       this._pendingAgentGroup = { step, turnId, solo: tc };
-      state.transcriptContainer.addChild(tc);
+      this.addActivityChild(tc);
       state.ui.requestRender();
       return true;
     }
@@ -896,9 +1050,10 @@ export class StreamingUIController {
     const idx = children.indexOf(solo);
     if (idx >= 0) {
       children[idx] = group;
+      collapseInTranscript(state.transcriptContainer, group);
       state.transcriptContainer.invalidate();
     } else {
-      state.transcriptContainer.addChild(group);
+      this.addActivityChild(group);
     }
     group.attach(solo.toolCallView.id, solo);
     const entry = transcriptController.findEntryForComponent(solo);
@@ -927,7 +1082,7 @@ export class StreamingUIController {
     const cur = this._pendingReadGroup;
     if (cur === null) {
       this._pendingReadGroup = { step, turnId, solo: tc };
-      state.transcriptContainer.addChild(tc);
+      this.addActivityChild(tc);
       state.ui.requestRender();
       return true;
     }
@@ -940,7 +1095,7 @@ export class StreamingUIController {
     const solo = cur.solo;
     if (solo === undefined) {
       this._pendingReadGroup = { step, turnId, solo: tc };
-      state.transcriptContainer.addChild(tc);
+      this.addActivityChild(tc);
       state.ui.requestRender();
       return true;
     }
@@ -958,9 +1113,10 @@ export class StreamingUIController {
     const idx = children.indexOf(solo);
     if (idx >= 0) {
       children[idx] = group;
+      collapseInTranscript(state.transcriptContainer, group);
       state.transcriptContainer.invalidate();
     } else {
-      state.transcriptContainer.addChild(group);
+      this.addActivityChild(group);
     }
     group.attach(solo.toolCallView.id, solo);
     const entry = transcriptController.findEntryForComponent(solo);
@@ -970,4 +1126,12 @@ export class StreamingUIController {
     }
     return group;
   }
+}
+
+function activityToolLabel(toolCall: ToolCallBlockData, workDir: string | undefined): string {
+  const action = toolActionLabel(toolCall.name);
+  const arg = extractKeyArgument(toolCall.name, toolCall.args, workDir);
+  if (arg === null) return `正在${action}…`;
+  const short = arg.length > 40 ? `${arg.slice(0, 40)}…` : arg;
+  return `正在${action} ${short}…`;
 }
