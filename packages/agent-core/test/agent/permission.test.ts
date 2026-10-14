@@ -412,6 +412,24 @@ describe('Permission auto mode', () => {
     },
   );
 
+  it('forwards the policy reason with the approval request', async () => {
+    const { manager, requestApproval } = makePermissionManager(async () => ({
+      decision: 'approved',
+    }));
+
+    await manager.beforeToolCall(
+      hookContext({ id: 'call_env', toolName: 'Read', args: { path: '/workspace/.env' } }),
+    );
+
+    expect(requestApproval).toHaveBeenCalledWith(
+      expect.objectContaining({
+        toolName: 'Read',
+        reason: expect.objectContaining({ sensitive_path: true }),
+      }),
+      expect.any(Object),
+    );
+  });
+
   it('blocks instead of approving when no approval rpc is available', async () => {
     const { manager, requestApproval } = makePermissionManager(
       async () => ({ decision: 'approved' }),
@@ -1566,6 +1584,7 @@ describe('ExitPlanMode permission policy', () => {
           path: '/tmp/plan.md',
           options: planOptions,
         },
+        reason: expect.any(Object),
       },
       { signal: expect.any(AbortSignal) },
     );

@@ -20,6 +20,8 @@ export interface ApprovalRequest {
   readonly toolName: string;
   readonly action: string;
   readonly display: ToolInputDisplay;
+  /** Why a policy asked, e.g. `{ sensitive_path: true }`; lets clients explain the prompt. */
+  readonly reason?: Readonly<Record<string, string | number | boolean | null>> | undefined;
 }
 
 export interface QuestionOption {

@@ -217,6 +217,7 @@ export class PermissionManager {
                 toolName: name,
                 action,
                 display,
+                reason: result.reason,
               },
               { signal },
             ).then(resolve, reject);
