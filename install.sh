@@ -17,9 +17,12 @@ while [[ $# -gt 0 ]]; do
 done
 
 REPO="crake7even/eddy-code"
-DEFAULT_DIR="${HOME}/.eddy-code"
+# 用户数据（config.toml、sessions、memory 等）在 DATA_DIR，代码装在它下面的 app/，
+# 升级只替换 app/，不碰用户数据。
+DATA_DIR="${HOME}/.eddy-code"
+DEFAULT_DIR="$DATA_DIR/app"
 INSTALL_DIR="${INSTALL_DIR:-$DEFAULT_DIR}"
-BIN_DIR="$INSTALL_DIR/bin"
+BIN_DIR="$DATA_DIR/bin"
 EDDY_HOME="$INSTALL_DIR"
 
 info()  { echo "[INFO]  $*"; }
@@ -46,10 +49,53 @@ done
 
 # ── 卸载 pip / pipx / uv 全局安装的旧 eddy 包 ──
 
-# ── 彻底删除旧 eddy-code 目录（Python .venv / node_modules 等） ──
-if [ -d "$INSTALL_DIR" ]; then
-    info "删除旧安装目录: $INSTALL_DIR"
-    rm -rf "$INSTALL_DIR"
+# ── 删除旧安装目录：只删确认是 eddy-code 源码的目录，绝不删用户数据 ──
+is_eddy_checkout() {
+    [ -f "$1/package.json" ] && grep -q '"name": *"@eddy-code/monorepo"' "$1/package.json"
+}
+
+resolve_dir() {
+    (cd "$1" 2>/dev/null && pwd -P)
+}
+
+# 旧版把代码直接装在 ~/.eddy-code，和用户数据混在一起：只删仓库文件和构建产物，
+# 保留 config.toml、sessions、memory、AGENTS.md（用户全局指令）、bin/ 等。
+if is_eddy_checkout "$DATA_DIR"; then
+    info "迁移旧安装布局: 仅移除 $DATA_DIR 中的源码文件，保留用户数据"
+    repo_entries=$(git -C "$DATA_DIR" ls-tree --name-only HEAD 2>/dev/null) || {
+        error "无法识别 $DATA_DIR 中的旧版源码文件，为避免误删用户数据已停止安装"
+        echo "请手动删除 $DATA_DIR 中的源码文件（保留 config.toml、sessions、memory 等）后重试"
+        exit 1
+    }
+    while IFS= read -r entry; do
+        case "$entry" in
+            ''|AGENTS.md|bin) ;;
+            *) rm -rf "${DATA_DIR:?}/$entry" ;;
+        esac
+    done <<< "$repo_entries"
+    rm -rf "${DATA_DIR:?}/.git" "${DATA_DIR:?}/node_modules"
+fi
+
+if [ -e "$INSTALL_DIR" ]; then
+    resolved=$(resolve_dir "$INSTALL_DIR") || {
+        error "安装路径不是目录: $INSTALL_DIR"
+        exit 1
+    }
+    if [ "$resolved" = "/" ] || [ "$resolved" = "$(resolve_dir "$HOME")" ] \
+        || [ "$resolved" = "$(resolve_dir "$DATA_DIR")" ]; then
+        error "拒绝删除 $INSTALL_DIR：它是根目录、用户主目录或 eddy 数据目录"
+        exit 1
+    fi
+    if is_eddy_checkout "$INSTALL_DIR"; then
+        info "删除旧安装目录: $INSTALL_DIR"
+        rm -rf "$INSTALL_DIR"
+    elif [ -z "$(ls -A "$INSTALL_DIR")" ]; then
+        rmdir "$INSTALL_DIR"
+    else
+        error "安装路径 $INSTALL_DIR 已存在且不是 eddy-code 安装，为避免误删已停止"
+        echo "请换一个 INSTALL_DIR，或确认无用后手动删除该目录"
+        exit 1
+    fi
 fi
 
 # ── 清理 shell 配置中的所有旧 eddy-code PATH 条目 ──
@@ -149,11 +195,11 @@ pnpm -r build || {
 
 # ── 6. 创建 eddy 主命令，并只保留 eddy 主入口 ───────────────────────────
 mkdir -p "$BIN_DIR"
-cat > "$BIN_DIR/eddy" <<'EOF'
+cat > "$BIN_DIR/eddy" <<EOF
 #!/usr/bin/env bash
-EDDY_HOME="${EDDY_HOME:-$HOME/.eddy-code}"
-cd "$EDDY_HOME"
-exec node "$EDDY_HOME/apps/eddy-code/dist/main.mjs" "$@"
+EDDY_HOME="\${EDDY_HOME:-$(printf '%q' "$INSTALL_DIR")}"
+cd "\$EDDY_HOME"
+exec node "\$EDDY_HOME/apps/eddy-code/dist/main.mjs" "\$@"
 EOF
 chmod +x "$BIN_DIR/eddy"
 

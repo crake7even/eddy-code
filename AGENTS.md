@@ -224,6 +224,8 @@ Development on Windows works; the differences are:
   or remove `dist/` manually.
 - `install.ps1` (PowerShell) and `install.sh` (bash) are end-user installers.
   They wipe prior installs, clone the repo, build, and write an `eddy` launcher:
-  `install.sh` uses `~/.eddy-code`, `install.ps1` uses `%USERPROFILE%\eddy-code`.
+  `install.sh` uses `~/.eddy-code/app` (keeping user data in `~/.eddy-code`),
+  `install.ps1` uses `%USERPROFILE%\eddy-code`. Both only delete an existing
+  install dir that is an eddy-code checkout.
   They are not the developer setup path — for development, clone the repo and
   run `pnpm install`.

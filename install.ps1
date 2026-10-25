@@ -39,10 +39,30 @@ foreach ($old in $oldPaths) {
 }
 
 # ── 卸载 pip / uv 安装的旧 eddy 包 ──
-# ── 彻底删除旧安装目录 ──
+# ── 删除旧安装目录：只删确认是 eddy-code 源码的目录，绝不删用户数据 ──
 if (Test-Path $InstallDir) {
-    Info "删除旧安装目录: $InstallDir"
-    Remove-Item -Recurse -Force $InstallDir -ErrorAction SilentlyContinue
+    $resolved = (Resolve-Path $InstallDir).Path.TrimEnd('\')
+    $protected = @(
+        [IO.Path]::GetPathRoot($resolved).TrimEnd('\'),
+        $env:USERPROFILE.TrimEnd('\'),
+        "$env:USERPROFILE\.eddy-code"
+    )
+    if ($protected -contains $resolved) {
+        Error "拒绝删除 ${InstallDir}：它是磁盘根目录、用户主目录或 eddy 数据目录"
+        exit 1
+    }
+    $pkg = Join-Path $resolved "package.json"
+    $isEddy = (Test-Path $pkg) -and ((Get-Content $pkg -Raw) -match '"name":\s*"@eddy-code/monorepo"')
+    if ($isEddy) {
+        Info "删除旧安装目录: $InstallDir"
+        Remove-Item -Recurse -Force $InstallDir
+    } elseif (-not (Get-ChildItem -Force $InstallDir | Select-Object -First 1)) {
+        Remove-Item -Force $InstallDir
+    } else {
+        Error "安装路径 $InstallDir 已存在且不是 eddy-code 安装，为避免误删已停止"
+        Write-Host "请换一个 INSTALL_DIR，或确认无用后手动删除该目录"
+        exit 1
+    }
 }
 
 # ── 清理 PowerShell Profile 中的旧 eddy-code PATH 引用 ──
