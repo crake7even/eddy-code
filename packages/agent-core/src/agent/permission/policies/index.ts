@@ -3,6 +3,7 @@ import type { PermissionPolicy } from '../types';
 import { AutoModeApprovePermissionPolicy } from './auto-mode-approve';
 import { AutoModeAskUserQuestionDenyPermissionPolicy } from './auto-mode-ask-user-question-deny';
 import { AutoModeFileAccessDenyPermissionPolicy } from './auto-mode-file-access-deny';
+import { AutoModeShellCommandDenyPermissionPolicy } from './auto-mode-shell-command-deny';
 import { DefaultToolApprovePermissionPolicy } from './default-tool-approve';
 import { ExitPlanModeReviewAskPermissionPolicy } from './exit-plan-mode-review-ask';
 import { FallbackAskPermissionPolicy } from './fallback-ask';
@@ -37,6 +38,8 @@ export function createPermissionDecisionPolicies(agent: Agent): readonly Permiss
     new UserConfiguredDenyPermissionPolicy(agent),
     // auto mode + sensitive file, git control-path write, or write outside cwd → deny (nobody to ask).
     new AutoModeFileAccessDenyPermissionPolicy(agent),
+    // auto mode + Bash command that exfiltrates, escalates, or destroys → deny.
+    new AutoModeShellCommandDenyPermissionPolicy(agent),
     // auto mode → approve (any auto-mode block must be a deny rule above this).
     new AutoModeApprovePermissionPolicy(agent),
     // Approve-for-session memorized rule matches → approve. Runs before user-configured ask rules so an in-session grant beats a still-matching ask rule on later calls.

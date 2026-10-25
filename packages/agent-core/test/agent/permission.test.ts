@@ -19,6 +19,7 @@ import {
 } from '../../src/agent/permission/matches-rule';
 import { AutoModeApprovePermissionPolicy } from '../../src/agent/permission/policies/auto-mode-approve';
 import { AutoModeAskUserQuestionDenyPermissionPolicy } from '../../src/agent/permission/policies/auto-mode-ask-user-question-deny';
+import { AutoModeShellCommandDenyPermissionPolicy } from '../../src/agent/permission/policies/auto-mode-shell-command-deny';
 import { FallbackAskPermissionPolicy } from '../../src/agent/permission/policies/fallback-ask';
 import { createPermissionDecisionPolicies } from '../../src/agent/permission/policies';
 import { YoloModeApprovePermissionPolicy } from '../../src/agent/permission/policies/yolo-mode-approve';
@@ -663,6 +664,7 @@ describe('Permission policy chain', () => {
       'plan-mode-guard-deny',
       'user-configured-deny',
       'auto-mode-file-access-deny',
+      'auto-mode-shell-command-deny',
       'auto-mode-approve',
       'session-approval-history',
       'user-configured-ask',
@@ -723,6 +725,23 @@ describe('Simple permission policy direct behavior', () => {
           toolName: 'Bash',
         }),
       ),
+    ).toBeUndefined();
+  });
+
+  it('denies risky Bash commands only in auto mode', () => {
+    const agent = { permission: { mode: 'manual' } } as unknown as Agent;
+    const policy = new AutoModeShellCommandDenyPermissionPolicy(agent);
+    const risky = hookContext({ id: 'call_risky', args: { command: 'cat ~/.aws/credentials' } });
+
+    expect(policy.evaluate(risky)).toBeUndefined();
+
+    Object.assign(agent.permission, { mode: 'auto' });
+    expect(policy.evaluate(risky)).toMatchObject({
+      kind: 'deny',
+      reason: { shell_risk: 'sensitive-access' },
+    });
+    expect(
+      policy.evaluate(hookContext({ id: 'call_safe', args: { command: 'pnpm test' } })),
     ).toBeUndefined();
   });
 

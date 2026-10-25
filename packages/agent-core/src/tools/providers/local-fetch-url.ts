@@ -14,6 +14,9 @@
  *      before throwing a "meaningful content" error.
  */
 
+import { lookup } from 'node:dns/promises';
+import { isIP } from 'node:net';
+
 import { Readability } from '@mozilla/readability';
 import { parseHTML as rawParseHTML } from 'linkedom';
 
@@ -26,6 +29,15 @@ export interface LocalFetchURLProviderOptions {
   readonly maxBytes?: number;
   readonly allowPrivateAddresses?: boolean;
   readonly cache?: FetchCache;
+  /** Resolves a hostname to its addresses; injectable for tests. */
+  readonly lookupImpl?: (hostname: string) => Promise<readonly string[]>;
+}
+
+const MAX_REDIRECTS = 5;
+
+async function defaultLookup(hostname: string): Promise<readonly string[]> {
+  const results = await lookup(hostname, { all: true, verbatim: true });
+  return results.map((result) => result.address);
 }
 
 const DEFAULT_USER_AGENT =
@@ -55,13 +67,16 @@ const parseHTML = rawParseHTML as unknown as (html: string) => DomParseResult;
 /**
  * SSRF guard — reject non-http(s) schemes and (by default) any hostname
  * that is, or parses as, a private / loopback / link-local / ULA IP
- * literal. This is a *static* check against the URL string; it does NOT
- * do DNS resolution, so a domain that resolves to a private IP via
- * DNS-rebinding is **not** caught here. That attack is a known
- * limitation; mitigations (e.g. pinning the resolved IP through to
- * fetch) are left for a follow-up.
+ * literal, then resolves the hostname and rejects it when any resolved
+ * address is private. Redirects are followed manually so every hop goes
+ * through this check. A DNS answer that changes between this lookup and
+ * the connection (rebinding) is still not caught.
  */
-function assertSafeFetchTarget(url: string, allowPrivate: boolean): void {
+async function assertSafeFetchTarget(
+  url: string,
+  allowPrivate: boolean,
+  lookupImpl: (hostname: string) => Promise<readonly string[]>,
+): Promise<URL> {
   let parsed: URL;
   try {
     parsed = new URL(url);
@@ -71,24 +86,47 @@ function assertSafeFetchTarget(url: string, allowPrivate: boolean): void {
   if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
     throw new Error(`Unsupported URL scheme "${parsed.protocol}" — only http(s) allowed.`);
   }
-  if (allowPrivate) return;
+  if (allowPrivate) return parsed;
   // URL hostname preserves surrounding `[ ]` for IPv6 literals on some
   // Node versions (and not others). Strip them for uniform comparison.
   const hostRaw = parsed.hostname.toLowerCase();
   const host = hostRaw.startsWith('[') && hostRaw.endsWith(']') ? hostRaw.slice(1, -1) : hostRaw;
+  assertPublicHost(host, host);
+  if (isIP(host) === 0) {
+    let addresses: readonly string[];
+    try {
+      addresses = await lookupImpl(host);
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : String(error);
+      throw new Error(`Failed to resolve host "${host}": ${msg}`, { cause: error });
+    }
+    for (const address of addresses) assertPublicHost(address.toLowerCase(), host);
+  }
+  return parsed;
+}
+
+function assertPublicHost(host: string, label: string): void {
+  // IPv4-mapped IPv6 (`::ffff:127.0.0.1`) is checked as the IPv4 it maps to.
+  const mapped = /^::ffff:(\d{1,3}(?:\.\d{1,3}){3})$/.exec(host);
+  if (mapped !== null) {
+    assertPublicHost(mapped[1]!, label);
+    return;
+  }
   // Literal "localhost" / loopback aliases.
   if (host === 'localhost' || host.endsWith('.localhost')) {
-    throw new Error(`Refusing to fetch private host: "${host}"`);
+    throw privateTargetError(host, label);
   }
-  // IPv6 loopback / ULA / link-local. Check after bracket strip.
+  // IPv6 loopback / ULA / link-local. Check after bracket strip; only IPv6
+  // literals contain `:`, so domains like `fdroid.org` are not caught.
   if (
-    host === '::1' ||
-    host === '::' ||
-    host.startsWith('fe80:') ||
-    host.startsWith('fc') ||
-    host.startsWith('fd')
+    host.includes(':') &&
+    (host === '::1' ||
+      host === '::' ||
+      host.startsWith('fe80:') ||
+      host.startsWith('fc') ||
+      host.startsWith('fd'))
   ) {
-    throw new Error(`Refusing to fetch private host: "${host}"`);
+    throw privateTargetError(host, label);
   }
   // IPv4 literal — only check when the hostname is a dotted-quad; normal
   // domains will never match.
@@ -96,7 +134,7 @@ function assertSafeFetchTarget(url: string, allowPrivate: boolean): void {
   if (v4 !== null) {
     const octets = [v4[1], v4[2], v4[3], v4[4]].map(Number);
     if (octets.some((n) => !Number.isInteger(n) || n < 0 || n > 255)) {
-      throw new Error(`Invalid IPv4 literal: "${host}"`);
+      throw new Error(`Invalid IPv4 literal: "${label}"`);
     }
     const [a, b] = octets as [number, number, number, number];
     // 127.0.0.0/8 loopback, 10.0.0.0/8, 192.168.0.0/16,
@@ -118,9 +156,17 @@ function assertSafeFetchTarget(url: string, allowPrivate: boolean): void {
       isZero ||
       isCgnat
     ) {
-      throw new Error(`Refusing to fetch private address: "${host}"`);
+      throw privateTargetError(host, label);
     }
   }
+}
+
+function privateTargetError(host: string, label: string): Error {
+  return new Error(
+    host === label
+      ? `Refusing to fetch private address: "${host}"`
+      : `Refusing to fetch private address: "${label}" resolves to ${host}`,
+  );
 }
 
 function cacheKey(url: string, allowPrivate: boolean, maxBytes: number, userAgent: string): string {
@@ -133,6 +179,7 @@ export class LocalFetchURLProvider implements UrlFetcher {
   private readonly maxBytes: number;
   private readonly allowPrivateAddresses: boolean;
   private readonly cache: FetchCache;
+  private readonly lookupImpl: (hostname: string) => Promise<readonly string[]>;
 
   constructor(options: LocalFetchURLProviderOptions = {}) {
     this.userAgent = options.userAgent ?? DEFAULT_USER_AGENT;
@@ -140,10 +187,11 @@ export class LocalFetchURLProvider implements UrlFetcher {
     this.maxBytes = options.maxBytes ?? DEFAULT_MAX_BYTES;
     this.allowPrivateAddresses = options.allowPrivateAddresses ?? false;
     this.cache = options.cache ?? new FetchCache();
+    this.lookupImpl = options.lookupImpl ?? defaultLookup;
   }
 
   async fetch(url: string, _options?: { toolCallId?: string }): Promise<UrlFetchResult> {
-    assertSafeFetchTarget(url, this.allowPrivateAddresses);
+    await assertSafeFetchTarget(url, this.allowPrivateAddresses, this.lookupImpl);
 
     const key = cacheKey(url, this.allowPrivateAddresses, this.maxBytes, this.userAgent);
     const cached = this.cache.get(key);
@@ -157,10 +205,7 @@ export class LocalFetchURLProvider implements UrlFetcher {
   }
 
   private async fetchFresh(url: string): Promise<UrlFetchResult> {
-    const response = await this.fetchImpl(url, {
-      method: 'GET',
-      headers: { 'User-Agent': this.userAgent },
-    });
+    const response = await this.fetchFollowingSafeRedirects(url);
 
     if (response.status >= 400) {
       // Drain the unused body so undici can release the socket back to
@@ -201,6 +246,29 @@ export class LocalFetchURLProvider implements UrlFetcher {
     }
 
     return { content: this.extractMainContent(body), kind: 'extracted' };
+  }
+
+  /** Follows redirects by hand so each hop is re-checked against the SSRF guard. */
+  private async fetchFollowingSafeRedirects(url: string): Promise<Response> {
+    let current = url;
+    for (let hop = 0; ; hop += 1) {
+      const response = await this.fetchImpl(current, {
+        method: 'GET',
+        headers: { 'User-Agent': this.userAgent },
+        redirect: 'manual',
+      });
+      const location = response.headers.get('location');
+      if (response.status < 300 || response.status >= 400 || location === null) return response;
+
+      await response.body?.cancel().catch(() => {
+        /* already closed */
+      });
+      if (hop >= MAX_REDIRECTS) {
+        throw new Error(`Too many redirects (more than ${String(MAX_REDIRECTS)}).`);
+      }
+      current = new URL(location, current).toString();
+      await assertSafeFetchTarget(current, this.allowPrivateAddresses, this.lookupImpl);
+    }
   }
 
   private extractMainContent(html: string): string {
