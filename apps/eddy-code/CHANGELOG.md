@@ -1,5 +1,11 @@
 # eddy-code
 
+## 0.6.8
+
+### Patch Changes
+
+- [`d818a41`](https://github.com/crake7even/eddy-code/commit/d818a4172ff31be31403a4d0cb99887857fe2434) - Auto permission mode no longer approves every Bash command: commands that read credentials or dump the environment, send data over the network (`curl -d`, `nc`, `scp`, …), pipe into a shell, run `sudo`, or destroy data (`rm -rf` outside the project, `git push --force`, `git reset --hard`) are now denied. Web fetches also follow redirects hop by hop and refuse hosts that resolve to private addresses.
+
 ## 0.6.7
 
 ### Patch Changes
