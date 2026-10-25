@@ -100,7 +100,8 @@ describe('runLoadingAnimation', () => {
   });
 
   it('does not use alternate screen when interrupted during Windows loading', async () => {
-    runLoadingAnimation();
+    // Ctrl+C exits the process, so the animation promise never settles.
+    void runLoadingAnimation();
 
     mocks.stdin.emit('data', Buffer.from('\x03'));
 
