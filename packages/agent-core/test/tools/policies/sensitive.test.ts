@@ -1,3 +1,6 @@
+import { homedir } from 'node:os';
+
+import { join } from 'pathe';
 import { describe, expect, it } from 'vitest';
 
 import { isSensitiveFile } from '../../../src/tools/policies/sensitive';
@@ -67,5 +70,39 @@ describe('isSensitiveFile', () => {
     ]) {
       expect(isSensitiveFile(path), path).toBe(false);
     }
+  });
+
+  it('flags other credential stores', () => {
+    for (const path of [
+      '/home/user/.netrc',
+      '/repo/.git-credentials',
+      '/home/user/.pypirc',
+      '/home/user/.kube/config',
+      '/home/user/.docker/config.json',
+      '/home/user/.eddy-code/config.toml',
+      '/home/user/.ssh/deploy_key',
+      '/home/user/.ssh/config',
+      '/home/user/.gnupg/private-keys-v1.d/abc.key',
+      '.ssh/github_key',
+      join(homedir(), '.npmrc'),
+    ]) {
+      expect(isSensitiveFile(path), path).toBe(true);
+    }
+  });
+
+  it('keeps public keys, project .npmrc, and look-alike configs readable', () => {
+    for (const path of [
+      '/home/user/.ssh/deploy_key.pub',
+      '/repo/.npmrc',
+      '/repo/k8s/config',
+      '/repo/docker/config.json',
+      '/repo/.eddy-code/settings.toml',
+    ]) {
+      expect(isSensitiveFile(path), path).toBe(false);
+    }
+  });
+
+  it('still flags .env variants that end in .pub', () => {
+    expect(isSensitiveFile('/app/.env.pub')).toBe(true);
   });
 });

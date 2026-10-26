@@ -7,7 +7,9 @@
  * like `.env.example` are explicitly allowed.
  */
 
-import { basename } from 'pathe';
+import { homedir } from 'node:os';
+
+import { basename, join } from 'pathe';
 
 const SENSITIVE_BASENAMES = new Set<string>([
   '.env',
@@ -15,12 +17,25 @@ const SENSITIVE_BASENAMES = new Set<string>([
   'id_ed25519',
   'id_ecdsa',
   'credentials',
+  '.netrc',
+  '.git-credentials',
+  '.pypirc',
 ]);
 
 const SENSITIVE_PATH_SUFFIXES = [
   ['.aws', 'credentials'],
   ['.gcp', 'credentials'],
+  ['.kube', 'config'],
+  ['.docker', 'config.json'],
+  ['.eddy-code', 'config.toml'],
 ];
+
+// Every file under these directories is treated as sensitive (public keys excepted).
+const SENSITIVE_DIRS = ['.ssh', '.gnupg'];
+
+// Only sensitive in the home directory: a project's own `.npmrc` is usually
+// plain registry config, while `~/.npmrc` holds the user's auth token.
+const HOME_SENSITIVE_BASENAMES = ['.npmrc'];
 
 const ENV_PREFIX = '.env.';
 const ENV_EXEMPTIONS = new Set<string>(['.env.example', '.env.sample', '.env.template']);
@@ -76,6 +91,17 @@ export function isSensitiveFile(path: string): boolean {
     ) {
       return true;
     }
+  }
+
+  if (!comparableName.endsWith('.pub')) {
+    for (const dir of SENSITIVE_DIRS) {
+      if (comparablePath.startsWith(`${dir}/`) || comparablePath.includes(`/${dir}/`)) return true;
+    }
+  }
+
+  const home = comparable(homedir());
+  for (const homeName of HOME_SENSITIVE_BASENAMES) {
+    if (comparablePath === comparable(join(home, homeName))) return true;
   }
 
   return false;
