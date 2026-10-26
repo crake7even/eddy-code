@@ -136,6 +136,7 @@ function buildEmptyGoalLines(colors: { text: string; textDim: string }): string[
     `${muted('/goal')} ${value('<目标描述>')}   ${muted('创建并启动目标')}`,
     `${muted('/goal pause')}       ${muted('暂停当前目标')}`,
     `${muted('/goal resume')}      ${muted('恢复已暂停的目标')}`,
+    `${muted('/goal budget')} ${value('<tokens|turns|time> <值>')}   ${muted('设置停止条件')}`,
     `${muted('/goaloff')}          ${muted('取消当前目标')}`,
   ];
 }

@@ -36,7 +36,11 @@ export const BUILTIN_SLASH_COMMANDS = [
     priority: 121,
     availability: (args) => {
       const trimmed = args.trim();
-      return trimmed === '' || trimmed === 'status' || trimmed === 'pause' || trimmed === 'off'
+      return trimmed === '' ||
+        trimmed === 'status' ||
+        trimmed === 'pause' ||
+        trimmed === 'off' ||
+        trimmed.startsWith('budget')
         ? 'always'
         : 'idle-only';
     },

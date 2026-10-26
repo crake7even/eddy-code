@@ -11,6 +11,7 @@ import {
   LLM_NOT_SET_MESSAGE,
   NO_ACTIVE_SESSION_MESSAGE,
 } from '../constant/eddy-tui';
+import { dismissGoalStatusPanel } from '../commands/goal';
 import { formatErrorMessage } from '../utils/event-payload';
 import type { ImageAttachmentStore } from '../utils/image-attachment-store';
 import type { PendingExit } from '../types';
@@ -49,6 +50,7 @@ export class EditorKeyboardController {
     const editor = host.state.editor;
 
     editor.onSubmit = (text: string) => {
+      dismissGoalStatusPanel();
       host.inputController.handleInput(text);
     };
 
