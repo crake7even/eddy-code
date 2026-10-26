@@ -38,16 +38,30 @@ error() { echo "[ERROR] $*" >&2; }
 # ══════════════════════════════════════════════════════════════════════════════
 info "清理旧 eddy 版本..."
 
-# ── 删除所有已知位置的旧 eddy 命令 ──
+# ── 删除旧 eddy 命令：只删内容或链接目标能确认是 eddy-code 启动器的文件 ──
+is_eddy_launcher() {
+    if [ -L "$1" ]; then
+        case "$(readlink "$1")" in *eddy-code*|*eddy_code*) return 0 ;; esac
+    fi
+    [ -f "$1" ] && grep -qE 'eddy-code|eddy_code' "$1" 2>/dev/null
+}
+
 for dir in \
-    "$HOME/.eddy-code/bin" \
     "$HOME/.eddy-code/bin" \
     "$HOME/.local/bin" \
     "/usr/local/bin" \
     "/opt/homebrew/bin"; do
-    if [ -f "$dir/eddy" ]; then
-        rm -f "$dir/eddy"
-        info "已删除旧命令: $dir/eddy"
+    target="$dir/eddy"
+    if [ -e "$target" ] || [ -L "$target" ]; then
+        if is_eddy_launcher "$target"; then
+            if rm -f "$target" 2>/dev/null; then
+                info "已删除旧命令: $target"
+            else
+                warn "无权限删除旧命令 $target，请手动删除"
+            fi
+        else
+            warn "保留 $target：它不是 eddy-code 的命令，可能会和新装的 eddy 冲突"
+        fi
     fi
 done
 
@@ -102,12 +116,29 @@ if [ -e "$INSTALL_DIR" ]; then
     fi
 fi
 
-# ── 清理 shell 配置中的所有旧 eddy-code PATH 条目 ──
+# ── 清理 shell 配置中旧版安装脚本写入的 PATH 条目 ──
+# 只删旧版写入的那一行 export PATH="<…>/.eddy-code/bin:$PATH"，改动前先备份
+# （不覆盖已有备份）。新版写入的标记块保留，后面检测到就不再重复添加。
+RC_BEGIN="# >>> eddy-code PATH >>>"
+RC_END="# <<< eddy-code PATH <<<"
 for rc in "$HOME/.zshrc" "$HOME/.bashrc" "$HOME/.bash_profile" "$HOME/.zprofile"; do
-    if [ -f "$rc" ]; then
-        sed -i.bak '/\.eddy-code\/bin/d' "$rc" 2>/dev/null || true
-        sed -i.bak '/eddy-code.*PATH/d' "$rc" 2>/dev/null || true
-        rm -f "${rc}.bak" 2>/dev/null || true
+    [ -f "$rc" ] || continue
+    cleaned=$(awk -v begin="$RC_BEGIN" -v end="$RC_END" '
+        $0 == begin { inside = 1 }
+        $0 == end { inside = 0 }
+        !inside && /^export PATH="[^":]*\/\.eddy-code\/bin:\$PATH"$/ { next }
+        { print }
+    ' "$rc")
+    if [ "$cleaned" != "$(cat "$rc")" ]; then
+        backup="$rc.eddy-backup-$(date +%Y%m%d%H%M%S)"
+        n=1
+        while [ -e "$backup" ]; do
+            backup="$rc.eddy-backup-$(date +%Y%m%d%H%M%S)-$n"
+            n=$((n + 1))
+        done
+        cp -p "$rc" "$backup"
+        printf '%s\n' "$cleaned" > "$rc"
+        info "已清理 $rc 中的旧 eddy-code PATH 条目（备份: $backup）"
     fi
 done
 info "旧版本清理完毕"
@@ -216,22 +247,28 @@ EOF
 chmod +x "$BIN_DIR/eddy"
 
 # ── 7. 添加到 PATH ─────────────────────────────────────────────────────────
-if [[ ":$PATH:" != *":$BIN_DIR:"* ]]; then
-    SHELL_RC=""
-    if [ -n "${ZSH_VERSION:-}" ] || [ "$(basename "$SHELL")" = "zsh" ]; then
-        SHELL_RC="$HOME/.zshrc"
-    elif [ -n "${BASH_VERSION:-}" ] || [ "$(basename "$SHELL")" = "bash" ]; then
-        SHELL_RC="$HOME/.bashrc"
-    fi
+# 按 shell 配置文件判断，而不是当前终端的 $PATH：上面已清理掉旧条目，
+# 当前终端里残留的 PATH 不代表新终端能找到 eddy。
+SHELL_RC=""
+if [ -n "${ZSH_VERSION:-}" ] || [ "$(basename "${SHELL:-}")" = "zsh" ]; then
+    SHELL_RC="$HOME/.zshrc"
+elif [ -n "${BASH_VERSION:-}" ] || [ "$(basename "${SHELL:-}")" = "bash" ]; then
+    SHELL_RC="$HOME/.bashrc"
+fi
 
-    if [ -n "$SHELL_RC" ] && [ -f "$SHELL_RC" ]; then
-        echo "export PATH=\"$BIN_DIR:\$PATH\"" >> "$SHELL_RC"
+if [ -n "$SHELL_RC" ] && [ -f "$SHELL_RC" ]; then
+    if ! grep -qxF "$RC_BEGIN" "$SHELL_RC"; then
+        {
+            echo "$RC_BEGIN"
+            echo "export PATH=\"$BIN_DIR:\$PATH\""
+            echo "$RC_END"
+        } >> "$SHELL_RC"
         info "已自动将 $BIN_DIR 加入 PATH ($SHELL_RC)"
-    else
-        echo ""
-        echo "请手动添加以下到 shell 配置文件 (~/.bashrc 或 ~/.zshrc):"
-        echo "  export PATH=\"$BIN_DIR:\$PATH\""
     fi
+else
+    echo ""
+    echo "请手动添加以下到 shell 配置文件 (~/.bashrc 或 ~/.zshrc):"
+    echo "  export PATH=\"$BIN_DIR:\$PATH\""
 fi
 
 export PATH="$BIN_DIR:$PATH"

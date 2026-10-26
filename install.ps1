@@ -69,13 +69,16 @@ if (Test-Path $InstallDir) {
     }
 }
 
-# ── 清理 PowerShell Profile 中的旧 eddy-code PATH 引用 ──
+# ── 清理 PowerShell Profile 中旧版写入的 eddy-code PATH 设置 ──
+# 只删修改 $env:PATH 且指向 eddy-code 的行，其余内容不动；改动前先备份。
 if (Test-Path $PROFILE) {
     $content = Get-Content $PROFILE -Raw -ErrorAction SilentlyContinue
-    if ($content -match 'eddy-code') {
-        $cleaned = $content -replace '(?m)^.*eddy-code.*\r?\n?', ''
-        Set-Content $PROFILE $cleaned.TrimEnd() -Encoding UTF8
-        Info "已清理 PowerShell Profile 中的旧 eddy-code 引用"
+    $pathLine = '(?m)^[ \t]*\$env:PATH[ \t]*\+?=.*eddy-code.*\r?\n?'
+    if ($content -and $content -match $pathLine) {
+        $backup = "$PROFILE.eddy-backup-$(Get-Date -Format yyyyMMddHHmmss)"
+        Copy-Item $PROFILE $backup
+        Set-Content $PROFILE ($content -replace $pathLine, '').TrimEnd() -Encoding UTF8
+        Info "已清理 PowerShell Profile 中的旧 eddy-code PATH 设置（备份: $backup）"
     }
 }
 Info "Cleanup complete"
