@@ -1,3 +1,4 @@
+import { visibleWidth } from '@earendil-works/pi-tui';
 import { describe, expect, it } from 'vitest';
 
 import { ActivityGroupComponent } from '#/tui/components/messages/activity-group';
@@ -39,5 +40,22 @@ describe('ActivityGroupComponent', () => {
 
     group.setExpanded(true);
     expect(text(group)).toContain('已思考 ⌄');
+  });
+
+  it('never renders a line wider than the terminal', () => {
+    const group = new ActivityGroupComponent(darkColors);
+    group.setLiveLabel(
+      '等待你批准：运行命令 cd /Users/yuzhaodai/Documents && echo "files:" && find . -type f | wc -l',
+    );
+    for (const line of group.render(78)) {
+      expect(visibleWidth(line)).toBeLessThanOrEqual(78);
+    }
+
+    for (let i = 0; i < 20; i += 1) group.addTool();
+    group.addFailure();
+    group.finish();
+    for (const line of group.render(10)) {
+      expect(visibleWidth(line)).toBeLessThanOrEqual(10);
+    }
   });
 });

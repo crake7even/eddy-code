@@ -5,7 +5,7 @@
  * members stay hidden in the transcript until ctrl+o expands them.
  */
 
-import type { Component, TUI } from '@earendil-works/pi-tui';
+import { truncateToWidth, type Component, type TUI } from '@earendil-works/pi-tui';
 import chalk from 'chalk';
 
 import { BRAILLE_SPINNER_FRAMES, BRAILLE_SPINNER_INTERVAL_MS } from '#/tui/constant/rendering';
@@ -73,17 +73,20 @@ export class ActivityGroupComponent implements Component {
     this.stopSpinner();
   }
 
-  render(_width: number): string[] {
+  render(width: number): string[] {
+    // pi-tui tears down the whole UI when a line is wider than the terminal,
+    // and live labels can carry long commands, so always clip to width.
     if (!this.finished) {
       const frame = BRAILLE_SPINNER_FRAMES[this.spinnerFrame] ?? BRAILLE_SPINNER_FRAMES[0];
-      return ['', chalk.hex(this.colors.roleThinking)(`${frame} ${this.liveLabel}`)];
+      const live = chalk.hex(this.colors.roleThinking)(`${frame} ${this.liveLabel}`);
+      return ['', truncateToWidth(live, width)];
     }
     const dim = chalk.hex(this.colors.textDim);
     let line = dim(STATUS_BULLET) + dim(`${this.summary()} ${this.expanded ? '⌄' : '›'}`);
     if (this.failedCount > 0) {
       line += chalk.hex(this.colors.error)(` · ${String(this.failedCount)} 个失败`);
     }
-    return ['', line];
+    return ['', truncateToWidth(line, width)];
   }
 
   private startSpinner(): void {
