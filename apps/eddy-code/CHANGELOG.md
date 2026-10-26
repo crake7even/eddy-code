@@ -1,5 +1,15 @@
 # eddy-code
 
+## 0.6.9
+
+### Patch Changes
+
+- [`baccde3`](https://github.com/crake7even/eddy-code/commit/baccde3591d6d46186859bd5c7fc8bfb68f304c5) - Fix the TUI freezing when the live status line is wider than the terminal, for example "等待你批准：运行命令 …" with a long command in a narrow window. The line is now clipped to the terminal width, so the approval panel shows and input keeps working.
+
+- [`a201eb0`](https://github.com/crake7even/eddy-code/commit/a201eb0b18ada7ae72ff5726d8f120cb5bad91e7) - Add `/goal budget` to set a stop condition for the current goal from the TUI: `/goal budget tokens 5m`, `/goal budget turns 100`, or `/goal budget time 30m`. It works while the goal is running; after a goal stops on its budget, raise the budget and run `/goal resume`.
+
+- [`e85e7fc`](https://github.com/crake7even/eddy-code/commit/e85e7fcfe2ddd2ea6be3d5c11507176f587a6842) - More credential files are now treated as sensitive: `.netrc`, `.git-credentials`, `.pypirc`, `~/.npmrc`, `.kube/config`, `.docker/config.json`, Eddy Code's own `config.toml`, and everything under `.ssh/` and `.gnupg/` except public keys. A project's own `.npmrc` stays readable.
+
 ## 0.6.8
 
 ### Patch Changes
