@@ -5,6 +5,10 @@
 $ErrorActionPreference = "Stop"
 
 $Repo       = "crake7even/eddy-code"
+# 与仓库根 package.json 的 packageManager 保持一致
+$PnpmVersion = "10.33.0"
+# 默认安装最新发布版本（v* tag）；可用 $env:EDDY_VERSION = "0.6.7" 指定版本
+$EddyVersion = $env:EDDY_VERSION
 $DefaultDir = "$env:USERPROFILE\eddy-code"
 $InstallDir = if ($env:INSTALL_DIR) { $env:INSTALL_DIR } else { $DefaultDir }
 $BinDir     = "$InstallDir\bin"
@@ -138,42 +142,34 @@ if (-not $pnpm) {
     } catch { }
 
     if (-not $pnpm) {
-        try {
-            $tmpPnpmInstall = "$env:TEMP\pnpm-install-$(Get-Random).ps1"
-            irm https://get.pnpm.io/install.ps1 -OutFile $tmpPnpmInstall
-            & $tmpPnpmInstall
-            Remove-Item $tmpPnpmInstall -ErrorAction SilentlyContinue
-        } catch {
-            Error "pnpm 安装失败: $_"
+        # 不执行远程安装脚本，也不全局安装：通过 npm 临时运行固定版本的 pnpm
+        if (-not (Get-Command npx -ErrorAction SilentlyContinue)) {
+            Error "pnpm 安装失败：未找到 corepack 或 npx"
             Write-Host "请手动安装: https://pnpm.io/installation"
             exit 1
         }
-        $pnpm = Get-Command pnpm -ErrorAction SilentlyContinue
-        if (-not $pnpm) {
-            foreach ($p in @(
-                "$env:LOCALAPPDATA\pnpm\pnpm.exe",
-                "$env:USERPROFILE\.local\bin\pnpm.exe",
-                "$env:USERPROFILE\.cargo\bin\pnpm.exe"
-            )) {
-                if (Test-Path $p) {
-                    $env:PATH = "$(Split-Path $p);$env:PATH"
-                    $pnpm = Get-Command pnpm -ErrorAction SilentlyContinue
-                    if ($pnpm) { break }
-                }
-            }
-        }
-    }
-    if (-not $pnpm) {
-        Error "pnpm was installed but not found; reopen PowerShell and retry"
-        exit 1
+        Info "通过 npx 使用 pnpm@$PnpmVersion"
+        function global:pnpm { npx --yes "pnpm@$PnpmVersion" @args }
     }
 }
 Info "pnpm: $(pnpm --version)"
 
 # ── 4. 下载项目 ─────────────────────────────────────────────────────────────
+if (-not $EddyVersion) {
+    $latestTag = git ls-remote --tags --refs --sort=-v:refname "https://github.com/$Repo.git" "v*" |
+        Select-Object -First 1
+    if ($latestTag) { $EddyVersion = ($latestTag -split "refs/tags/")[-1] }
+    if (-not $EddyVersion) {
+        Error "无法获取 eddy-code 的发布版本"
+        Write-Host "请检查网络连接，或设置 `$env:EDDY_VERSION 指定要安装的版本"
+        exit 1
+    }
+}
+if ($EddyVersion -match '^\d') { $EddyVersion = "v$EddyVersion" }
+
 Info "安装路径: $InstallDir"
-Info "下载源码仓库 crake7even/eddy-code（repo/source 标识）..."
-git clone --depth 1 "https://github.com/$Repo.git" $InstallDir
+Info "下载 eddy-code $EddyVersion..."
+git clone --depth 1 --branch $EddyVersion "https://github.com/$Repo.git" $InstallDir
 if ($LASTEXITCODE -ne 0) {
     Error "git clone failed (exit code: $LASTEXITCODE)"
     Write-Host "Check your network connection and retry."
@@ -183,7 +179,7 @@ Set-Location $InstallDir
 
 # ── 5. 安装依赖并构建 ──────────────────────────────────────────────────────
 Info "安装依赖并构建..."
-pnpm install
+pnpm install --frozen-lockfile
 if ($LASTEXITCODE -ne 0) {
     Error "Dependency install failed (exit code: $LASTEXITCODE)"
     exit 1

@@ -17,6 +17,10 @@ while [[ $# -gt 0 ]]; do
 done
 
 REPO="crake7even/eddy-code"
+# 与仓库根 package.json 的 packageManager 保持一致
+PNPM_VERSION="10.33.0"
+# 默认安装最新发布版本（v* tag）；可用 EDDY_VERSION=0.6.7 指定版本
+EDDY_VERSION="${EDDY_VERSION:-}"
 # 用户数据（config.toml、sessions、memory 等）在 DATA_DIR，代码装在它下面的 app/，
 # 升级只替换 app/，不碰用户数据。
 DATA_DIR="${HOME}/.eddy-code"
@@ -162,20 +166,28 @@ if ! command -v pnpm >/dev/null 2>&1; then
         corepack enable 2>/dev/null || true
     fi
     if ! command -v pnpm >/dev/null 2>&1; then
-        curl -fsSL https://get.pnpm.io/install.sh | sh - || {
-            error "pnpm 安装失败"
-            echo "请手动安装: https://pnpm.io/installation"
-            exit 1
-        }
-        export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$PATH"
+        # 不执行远程安装脚本，也不全局安装：通过 npm 临时运行固定版本的 pnpm
+        info "通过 npx 使用 pnpm@$PNPM_VERSION"
+        pnpm() { npx --yes "pnpm@$PNPM_VERSION" "$@"; }
     fi
 fi
 info "pnpm: $(pnpm --version)"
 
 # ── 4. 下载项目 ─────────────────────────────────────────────────────────────
+if [ -z "$EDDY_VERSION" ]; then
+    EDDY_VERSION=$(git ls-remote --tags --refs --sort=-v:refname "https://github.com/$REPO.git" 'v*' \
+        | head -n 1 | sed 's#.*refs/tags/##') || true
+    if [ -z "$EDDY_VERSION" ]; then
+        error "无法获取 eddy-code 的发布版本"
+        echo "请检查网络连接，或用 EDDY_VERSION=<版本号> 指定要安装的版本"
+        exit 1
+    fi
+fi
+case "$EDDY_VERSION" in [0-9]*) EDDY_VERSION="v$EDDY_VERSION" ;; esac
+
 info "安装路径: $INSTALL_DIR"
-info "下载源码仓库 crake7even/eddy-code（repo/source 标识）..."
-git clone --depth 1 "https://github.com/$REPO.git" "$INSTALL_DIR" || {
+info "下载 eddy-code $EDDY_VERSION..."
+git clone --depth 1 --branch "$EDDY_VERSION" "https://github.com/$REPO.git" "$INSTALL_DIR" || {
     error "下载失败"
     echo "请检查网络连接（国内用户建议科学上网，或稍后重试）"
     exit 1
@@ -184,7 +196,7 @@ cd "$INSTALL_DIR"
 
 # ── 5. 安装依赖并构建 ──────────────────────────────────────────────────────
 info "安装依赖并构建..."
-pnpm install || {
+pnpm install --frozen-lockfile || {
     error "依赖安装失败"
     exit 1
 }
@@ -226,6 +238,7 @@ export PATH="$BIN_DIR:$PATH"
 
 info "安装完成！"
 echo ""
+echo "安装版本: $EDDY_VERSION"
 echo "安装位置: $INSTALL_DIR"
 echo "运行:     eddy --version"
 echo ""

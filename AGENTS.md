@@ -223,7 +223,8 @@ Development on Windows works; the differences are:
 - A few package `clean` scripts use `rm -rf` and are not portable; ignore that
   or remove `dist/` manually.
 - `install.ps1` (PowerShell) and `install.sh` (bash) are end-user installers.
-  They wipe prior installs, clone the repo, build, and write an `eddy` launcher:
+  They wipe prior installs, clone the latest `v*` release tag (or `EDDY_VERSION`),
+  run `pnpm install --frozen-lockfile`, build, and write an `eddy` launcher:
   `install.sh` uses `~/.eddy-code/app` (keeping user data in `~/.eddy-code`),
   `install.ps1` uses `%USERPROFILE%\eddy-code`. Both only delete an existing
   install dir that is an eddy-code checkout.
